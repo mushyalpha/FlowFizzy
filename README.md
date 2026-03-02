@@ -2,7 +2,7 @@
 ### Real-Time Embedded Project
 
 **Real-Time State Machine | Flow Meter | IR Bottle Detection | IoT Dashboard**  
-**Platform:** Raspberry Pi 5 + C++  
+**Platform:** Raspberry Pi 5 and C++  
 **Components:** DC Motor | Solenoid Valve | YF-S201 Flow Meter | IR Sensor
 
 ---
@@ -11,27 +11,26 @@
 |---|---|
 | **Project Title** | DC Conveyor Water Filling Machine |
 | **Platform** | Raspberry Pi 5 — C++ |
-| **Core Mechanism** | Conveyor belt → bottle detection → fill to 500ml → advance/continue |
+| **Core Mechanism** | Conveyor belt → bottle detection → fill to 500ml → continue |
 | **Key Sensors** | YF-S201 flow meter + IR obstacle sensor |
 | **Control Logic** | Real-time state machine (20ms loop) |
-| **Duration** | 4 Weeks |
-| **Hardware Cost** | $78 – $117 USD (estimated) |
+| **Hardware Cost** | £58 – £88 |
 
 ---
 
 ## 1. Executive Summary
 
-This project designs and implements a real-time DC Conveyor Water Filling Machine on a Raspberry Pi 5 using C++. The system automatically detects bottles on a moving conveyor belt, stops the belt when a bottle is positioned under the nozzle, fills the bottle to a target volume using a flow meter, then restarts the belt to advance the next bottle. The entire process is controlled by a five-state real-time state machine running at a 20ms loop frequency under `SCHED_FIFO` scheduling.
+This project implements a real time DC Conveyor Water Filling Machine on a Raspberry Pi 5 using C++. The system automatically detects bottles on a moving conveyor belt, stops the belt when a bottle is positioned under the nozzle, fills the bottle to a target volume using a flow meter, then restarts the belt to advance the next bottle. The entire process is controlled by a real time state machine running at a 20ms loop.
 
-The project is modelled directly on industrial bottling line automation — one of the most common real-world applications of embedded real-time systems.
+The project is modelled directly on industrial bottling line automation.
 
-> **Hard real-time consequence of missing a deadline:** At a flow rate of 500 ml/min, the solenoid valve dispenses ~8.3 ml/sec. If the valve-close ISR is delayed by more than 5 ms, the bottle overfills by ~41 ml — an 8% volume error that violates fill accuracy requirements and constitutes a hard real-time deadline miss.
+> **Hard real time consequence of missing a deadline:** At a flow rate of 500 ml/min, the solenoid valve dispenses ~8.3 ml/sec. If the valve-close ISR is delayed by more than 5 ms, the bottle overfills.
 
 ---
 
 ## 2. Problem Statement & Motivation
 
-Manual water bottling is slow, inconsistent in fill volume, and labour-intensive. Industrial bottling plants solve this with automated conveyor-based filling lines, but these systems cost millions of dollars and use proprietary controllers. This project demonstrates that the same fundamental automation concept — **detect, stop, fill, advance** — can be implemented on an affordable single-board computer using open-source real-time C++, achieving fill accuracy comparable to commercial systems.
+Manual water bottling is slow, inconsistent in fill volume and labour intensive. Industrial bottling plants solve this with automated conveyor based filling lines, but these systems are very expensive. This project demonstrates that the same fundamental automation concept: **detect, stop, fill, advance** — can be implemented on an affordable single board computer using real-time C++, achieving fill accuracy comparable to commercial systems.
 
 The core engineering challenges are:
 - Detecting a bottle in the correct position reliably using an IR sensor
@@ -169,7 +168,7 @@ All Raspberry Pi code is written in C++ following SOLID design principles. Each 
 | `MonitorThread` | Normal-priority thread: LCD, MQTT, CSV log | `start()`, `stop()`, `publish()` |
 
 **SOLID mapping:**
-- **S** — Each class owns exactly one subsystem (no god-object)
+- **S** — Each class owns exactly one subsystem 
 - **O** — `IRSensor` and `FlowMeter` accept callbacks so the state machine does not need to be modified to change event handling
 - **L** — All hardware classes share a common `IHardwareDevice` interface for testability with mocks
 - **I** — `MonitorThread` depends only on a read-only `StatusProvider` interface, not the full state machine
