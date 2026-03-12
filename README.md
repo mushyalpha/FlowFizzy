@@ -110,12 +110,6 @@ sudo ./smartflow
 
 ---
 
-
----
-
-
----
-
 ## 🔄 How It Works
 
 1. **Sensor** reads liquid level every 500ms via the HC-SR04 ultrasonic sensor on GPIO
