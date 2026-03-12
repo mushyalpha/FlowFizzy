@@ -169,35 +169,38 @@ The system operates using a simple **state machine**.
 
 ## Control Logic
 
+The system operates using a simple state machine.
+
+```text
 System Start
-│
-▼
+     │
+     ▼
 ┌───────────────┐
-│ WAITING │
+│   WAITING     │
 │ No bottle yet │
 └───────┬───────┘
-│ bottle detected
-▼
+        │ bottle detected
+        ▼
 ┌───────────────┐
-│ CONFIRMATION │
+│ CONFIRMATION  │
 │ Bottle stable │
 └───────┬───────┘
-│ confirmed
-▼
+        │ confirmed
+        ▼
 ┌───────────────┐
-│ FILLING │
-│ Pump ON │
-│ Count pulses │
+│   FILLING     │
+│ Pump ON       │
+│ Count pulses  │
 └───────┬───────┘
-│ volume reached
-▼
+        │ volume reached
+        ▼
 ┌───────────────┐
 │ FILL COMPLETE │
-│ Pump OFF │
+│ Pump OFF      │
 └───────┬───────┘
-│
-▼
-WAITING
+        │
+        ▼
+      WAITING
 
 ---
 
