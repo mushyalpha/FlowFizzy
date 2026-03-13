@@ -88,7 +88,7 @@ sudo apt install -y cmake g++ libgpiod-dev liblgpio-dev
 ### 2. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/smartflow.git
+git clone https://github.com/Eng5220/SmartFlowX.git
 cd smartflow
 ```
 
