@@ -155,7 +155,7 @@ This project is licensed under the [MIT License](LICENSE).
 - GitHub: [@Eng5220/SmartFlowX](https://github.com/Eng5220/SmartFlowX)
 - TEAM:20
 
-<img src="./images/SmartFlowXIcon.png" alt="SmartFlowX Prototype" width="150">
+<img src="./images/SmartFlowXIcon.png" alt="SmartFlowX Prototype" align="right" width="150">
 ---
 
 <p align="center">Built with precision on Raspberry Pi 5. Powered by C++ and Linux. 🐧💡</p>
