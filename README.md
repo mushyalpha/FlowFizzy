@@ -69,7 +69,7 @@
 | GPIO 22 | Relay (Pump) | Output |
 | GPIO 23 | Relay (Valve) | Output |
 | GPIO 24 | Float Switch | Input |
-<img src="./images/RPI_PinOut.png" alt="RPI" align="left" width="500">
+<img src="./images/RPI_PinOut.png" alt="RPI" align="right" width="500">
 > ⚠️ Always use a **voltage divider** on the ECHO pin (HC-SR04 outputs 5V; RPi GPIO is 3.3V max).
 
 ---
