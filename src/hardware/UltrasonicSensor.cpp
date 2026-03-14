@@ -1,106 +1,54 @@
-#include "hardware/UltrasonicSensor.h"
+#include <atomic>       // Thread-safe flag for Ctrl+C handling
+#include <chrono>       // Sleep durations
+#include <csignal>      // Signal handling (SIGINT)
+#include <iostream>     // Console output
+#include <thread>       // sleep_for
 
-#include <lgpio.h>
-#include <chrono>
-#include <thread>
-#include <cmath>
-#include <iostream>
+#include "UltrasonicSensor.h"
 
-using Clock = std::chrono::steady_clock;
-using Microseconds = std::chrono::microseconds;
-using Milliseconds = std::chrono::milliseconds;
+// Global flag — set to false when user presses Ctrl+C
+static std::atomic<bool> keepRunning{true};
 
-// Timeout for echo response (30 ms, matches Python prototype)
-static constexpr double ECHO_TIMEOUT_SEC = 0.03;
-
-// Speed of sound: distance = time * 17150 (same formula as Python code)
-static constexpr double SPEED_FACTOR = 17150.0;
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-UltrasonicSensor::UltrasonicSensor(int gpioHandle, int trigPin, int echoPin)
-    : handle_(gpioHandle),
-      trigPin_(trigPin),
-      echoPin_(echoPin),
-      initialised_(false)
-{
+// Signal handler for graceful shutdown
+static void onSigInt(int) {
+    keepRunning = false;
 }
 
-UltrasonicSensor::~UltrasonicSensor() {
-    shutdown();
-}
+int main() {
+    // Register Ctrl+C handler
+    std::signal(SIGINT, onSigInt);
 
-bool UltrasonicSensor::init() {
-    // Claim trigger as output, echo as input
-    if (lgGpioClaimOutput(handle_, 0, trigPin_, 0) != 0) {
-        std::cerr << "ERROR: Failed to claim TRIG pin " << trigPin_ << "\n";
-        return false;
-    }
-    if (lgGpioClaimInput(handle_, 0, echoPin_) != 0) {
-        std::cerr << "ERROR: Failed to claim ECHO pin " << echoPin_ << "\n";
-        return false;
-    }
+    try {
+        // Create sensor on chip 0, TRIG=GPIO23, ECHO=GPIO24, measuring every 200ms
+        // Change chip number if needed:
+        //   Pi 5 often uses gpiochip4, older Pi often gpiochip0
+        UltrasonicSensor sensor(0, 23, 24, 200);
 
-    initialised_ = true;
-    std::cout << "UltrasonicSensor initialised (TRIG=" << trigPin_
-              << ", ECHO=" << echoPin_ << ")\n";
-    return true;
-}
+        // Print distance whenever a valid measurement is taken
+        sensor.registerDistanceCallback([](float distanceCm) {
+            std::cout << "Measured Distance = " << distanceCm << " cm\n";
+        });
 
-void UltrasonicSensor::shutdown() {
-    if (initialised_) {
-        lgGpioWrite(handle_, trigPin_, 0);
-        lgGpioFree(handle_, trigPin_);
-        lgGpioFree(handle_, echoPin_);
-        initialised_ = false;
-        std::cout << "UltrasonicSensor shut down.\n";
-    }
-}
+        // Print error messages (timeouts, bad readings)
+        sensor.registerErrorCallback([](const std::string& msg) {
+            std::cout << "ERROR: " << msg << "\n";
+        });
 
-double UltrasonicSensor::getDistanceCM() {
-    if (!initialised_) return -1.0;
+        // Start measuring (launches background thread)
+        sensor.start();
 
-    // --- Ensure trigger is LOW ---
-    lgGpioWrite(handle_, trigPin_, 0);
-    std::this_thread::sleep_for(Microseconds(50000));  // 50 ms settle
-
-    // --- Send 10 µs trigger pulse ---
-    lgGpioWrite(handle_, trigPin_, 1);
-    std::this_thread::sleep_for(Microseconds(10));     // 10 µs
-    lgGpioWrite(handle_, trigPin_, 0);
-
-    // --- Wait for echo to go HIGH (with timeout) ---
-    auto timeoutStart = Clock::now();
-    while (lgGpioRead(handle_, echoPin_) == 0) {
-        auto now = Clock::now();
-        double elapsed = std::chrono::duration<double>(now - timeoutStart).count();
-        if (elapsed > ECHO_TIMEOUT_SEC) {
-            return -1.0;  // timeout — no echo received
+        // Keep main thread alive until Ctrl+C
+        while (keepRunning) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
+
+        // Clean shutdown
+        sensor.stop();
     }
-    auto pulseStart = Clock::now();
-
-    // --- Wait for echo to go LOW (with timeout) ---
-    while (lgGpioRead(handle_, echoPin_) == 1) {
-        auto now = Clock::now();
-        double elapsed = std::chrono::duration<double>(now - pulseStart).count();
-        if (elapsed > ECHO_TIMEOUT_SEC) {
-            return -1.0;  // timeout — echo stuck HIGH
-        }
+    catch (const std::exception& e) {
+        std::cerr << "Fatal error: " << e.what() << "\n";
+        return 1;
     }
-    auto pulseEnd = Clock::now();
 
-    // --- Calculate distance ---
-    double pulseDuration = std::chrono::duration<double>(pulseEnd - pulseStart).count();
-    double distance = pulseDuration * SPEED_FACTOR;
-
-    // Round to 2 decimal places (matches Python: round(distance, 2))
-    return std::round(distance * 100.0) / 100.0;
-}
-
-bool UltrasonicSensor::isBottlePresent(double targetCM, double toleranceCM) {
-    double distance = getDistanceCM();
-    if (distance < 0) return false;  // timeout
-    return (distance >= targetCM - toleranceCM) &&
-           (distance <= targetCM + toleranceCM);
+    return 0;
 }

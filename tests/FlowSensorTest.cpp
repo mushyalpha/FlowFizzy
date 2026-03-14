@@ -1,30 +1,29 @@
 /**
- * @file UltrasonicSensorTest.cpp
- * @brief Test program for UltrasonicSensor — uses mock gpiod.hpp to simulate GPIO.
+ * @file FlowSensorTest.cpp
+ * @brief Clean test program for FlowSensor — starts from zero, no prior data.
  *
+ * Uses the mock gpiod.hpp to simulate GPIO pulses on Windows/WSL.
  * Compile:
  *   g++ -std=c++17 -Itests/mock_include -Isrc/hardware \
- *       -o build/ultrasonic_sensor_test tests/UltrasonicSensorTest.cpp -lpthread
+ *       -o build/flow_sensor_test tests/FlowSensorTest.cpp -lpthread
  */
 
 #include <iostream>
 #include <thread>
 #include <chrono>
-#include <atomic>
 #include <cassert>
 #include <cmath>
-#include <string>
 
-#include "UltrasonicSensor.h"
+#include "FlowMeter.h"  // FlowSensor class
 
 int main() {
 
     std::cout << "╔══════════════════════════════════════════════════════════════╗\n";
-    std::cout << "║        SmartFlowX — UltrasonicSensor Test Program          ║\n";
+    std::cout << "║           SmartFlowX — FlowSensor Test Program             ║\n";
     std::cout << "╠══════════════════════════════════════════════════════════════╣\n";
-    std::cout << "║  Sensor: HC-SR04 Ultrasonic Distance Sensor                ║\n";
-    std::cout << "║  Mode:   Mock GPIO (simulated ~12cm distance)              ║\n";
-    std::cout << "║  Sample Rate: 200ms (5 Hz)                                 ║\n";
+    std::cout << "║  Sensor: YF-S401 Hall-effect Flow Meter                    ║\n";
+    std::cout << "║  Mode:   Mock GPIO (simulated ~10 pulses/sec)              ║\n";
+    std::cout << "║  Calibration: 98 pulses per litre per minute               ║\n";
     std::cout << "╚══════════════════════════════════════════════════════════════╝\n\n";
 
     int passed = 0;
@@ -33,37 +32,34 @@ int main() {
     // ── Test 1: Fresh construction ───────────────────────────────────────────
     total++;
     std::cout << "── Test 1: Fresh construction ────────────────────────────\n";
-    UltrasonicSensor sensor(0, 23, 24, 200);
-    std::cout << "  ✓ Sensor created (chip=0, trig=23, echo=24, period=200ms)\n\n";
+    FlowSensor sensor(4, 23, 98.0f);
+    assert(sensor.getPulseCount() == 0);
+    std::cout << "  ✓ Pulse count starts at 0\n\n";
     passed++;
 
     // ── Test 2: Register callbacks ───────────────────────────────────────────
     total++;
     std::cout << "── Test 2: Register callbacks ──────────────────────────\n";
-    int distanceCount = 0;
-    float lastDistance = -1.0f;
-    int errorCount = 0;
-    std::string lastError;
+    int pulseCallbackCount = 0;
+    float lastFlowRate = -1.0f;
 
-    sensor.registerDistanceCallback([&](float distanceCm) {
-        distanceCount++;
-        lastDistance = distanceCm;
+    sensor.registerPulseCallback([&pulseCallbackCount]() {
+        pulseCallbackCount++;
     });
 
-    sensor.registerErrorCallback([&](const std::string& msg) {
-        errorCount++;
-        lastError = msg;
+    sensor.registerFlowCallback([&lastFlowRate](float rate) {
+        lastFlowRate = rate;
+        std::cout << "  → Flow Rate: " << rate << " L/min\n";
     });
-
-    std::cout << "  ✓ Distance callback registered\n";
-    std::cout << "  ✓ Error callback registered\n\n";
+    std::cout << "  ✓ Pulse callback registered\n";
+    std::cout << "  ✓ Flow callback registered\n\n";
     passed++;
 
     // ── Test 3: Start sensor ─────────────────────────────────────────────────
     total++;
     std::cout << "── Test 3: Start sensor ───────────────────────────────\n";
     sensor.start();
-    std::cout << "  ✓ Sensor started (GPIO + timerfd + worker thread)\n\n";
+    std::cout << "  ✓ Sensor started (edge + rate threads running)\n\n";
     passed++;
 
     // ── Test 4: Collect data for 3 seconds ───────────────────────────────────
@@ -71,30 +67,26 @@ int main() {
     std::cout << "── Test 4: Collect data for 3 seconds ─────────────────\n";
     std::this_thread::sleep_for(std::chrono::seconds(3));
 
-    std::cout << "  Distance callbacks received: " << distanceCount << "\n";
-    std::cout << "  Error callbacks received:    " << errorCount << "\n";
-    std::cout << "  Last distance: " << lastDistance << " cm\n";
-    if (errorCount > 0) {
-        std::cout << "  Last error: " << lastError << "\n";
-    }
+    std::cout << "  Pulse callbacks received: " << pulseCallbackCount << "\n";
+    std::cout << "  Last flow rate: " << lastFlowRate << " L/min\n";
 
-    // We should have received some measurements (distance or error)
-    int totalCallbacks = distanceCount + errorCount;
-    assert(totalCallbacks > 0);
-    std::cout << "  ✓ Sensor produced " << totalCallbacks << " measurements\n\n";
+    assert(pulseCallbackCount > 0);
+    assert(lastFlowRate > 0.0f);
+    std::cout << "  ✓ Pulses detected and flow rate calculated\n\n";
     passed++;
 
-    // ── Test 5: Distance value check ─────────────────────────────────────────
+    // ── Test 5: Flow rate sanity check ───────────────────────────────────────
     total++;
-    std::cout << "── Test 5: Distance value check ───────────────────────\n";
-    if (distanceCount > 0) {
-        std::cout << "  Last measured distance: " << lastDistance << " cm\n";
-        assert(lastDistance > 0.0f);
-        std::cout << "  ✓ Distance is positive (sensor is measuring)\n\n";
-    } else {
-        std::cout << "  ⚠ No valid distances (mock timing overhead)\n";
-        std::cout << "  ✓ Errors reported instead (expected in simulation)\n\n";
-    }
+    std::cout << "── Test 5: Flow rate sanity check ─────────────────────\n";
+    // Mock generates ~10 pulses/sec → frequency ≈ 10
+    // Flow rate = frequency / calibration = 10 / 98 ≈ 0.102 L/min
+    float expected = 10.0f / 98.0f;  // ~0.102
+    float tolerance = 0.03f;
+    std::cout << "  Expected ≈ " << expected << " L/min (±" << tolerance << ")\n";
+    std::cout << "  Actual   = " << lastFlowRate << " L/min\n";
+
+    assert(std::fabs(lastFlowRate - expected) < tolerance);
+    std::cout << "  ✓ Flow rate within expected range\n\n";
     passed++;
 
     // ── Test 6: Stop sensor ──────────────────────────────────────────────────
@@ -107,11 +99,10 @@ int main() {
     // ── Test 7: No activity after stop ───────────────────────────────────────
     total++;
     std::cout << "── Test 7: No activity after stop ─────────────────────\n";
-    int countBefore = distanceCount + errorCount;
+    int countBefore = pulseCallbackCount;
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    int countAfter = distanceCount + errorCount;
-    assert(countAfter == countBefore);
-    std::cout << "  ✓ No new callbacks after stop (count still " << countBefore << ")\n\n";
+    assert(pulseCallbackCount == countBefore);
+    std::cout << "  ✓ No new pulses after stop (count still " << countBefore << ")\n\n";
     passed++;
 
     // ── Results ──────────────────────────────────────────────────────────────
