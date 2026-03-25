@@ -78,3 +78,10 @@ add_executable(flow_sensor_integration_test
 )
 target_include_directories(flow_sensor_integration_test PRIVATE include src)
 target_link_libraries(flow_sensor_integration_test gpiod pthread)
+
+add_executable(pump_integration_test
+    tests/PumpIntegrationTest.cpp
+    src/hardware/PumpController.cpp
+)
+target_include_directories(pump_integration_test PRIVATE include src)
+target_link_libraries(pump_integration_test gpiod pthread)
