@@ -53,7 +53,7 @@ void FlowMeter::setupGpio() {
 
     gpiod::line_config lineCfg;
     lineCfg.add_line_settings(
-        {pinNo_},
+        pinNo_,
         gpiod::line_settings()
             .set_direction(gpiod::line::direction::INPUT)
             .set_edge_detection(gpiod::line::edge::FALLING));

@@ -129,7 +129,7 @@ private:
         {
             gpiod::line_config trigCfg;
             trigCfg.add_line_settings(
-                {trigPin_},
+                trigPin_,
                 gpiod::line_settings{}
                     .set_direction(gpiod::line::direction::OUTPUT)
                     .set_output_value(gpiod::line::value::INACTIVE));
@@ -144,7 +144,7 @@ private:
         {
             gpiod::line_config echoCfg;
             echoCfg.add_line_settings(
-                {echoPin_},
+                echoPin_,
                 gpiod::line_settings{}
                     .set_direction(gpiod::line::direction::INPUT)
                     .set_edge_detection(gpiod::line::edge::BOTH));
