@@ -12,8 +12,9 @@
 #include <string>           // String handling
 #include <thread>           // Multithreading
 
+#include <time.h>           // clock_nanosleep, CLOCK_MONOTONIC
 #include <unistd.h>         // POSIX read/close
-#include <sys/timerfd.h>    // Linux periodic timer
+#include <sys/timerfd.h>    // Linux periodic + one-shot timerfd
 
 #include <gpiod.hpp>        // GPIO access library for Raspberry Pi
 
@@ -221,21 +222,47 @@ private:
     // ── Distance Measurement ─────────────────────────────────────────────────
 
     // Perform one HC-SR04 measurement cycle:
-    //   1. Send 10µs trigger pulse
-    //   2. Wait for echo rising edge  (sound wave sent)
-    //   3. Wait for echo falling edge (sound wave returned)
-    //   4. Calculate distance from pulse width
-    // Returns distance in cm, or negative value on error
+    //   1. TRIG settle (2 ms)  — one-shot timerfd (kernel scheduled, low power)
+    //   2. Send 10 µs trigger  — clock_nanosleep (POSIX, kernel-mode wait)
+    //   3. Wait for echo rising  edge — blocking gpiod I/O
+    //   4. Wait for echo falling edge — blocking gpiod I/O
+    //   5. Calculate distance from echo pulse width
+    // Returns distance in cm, or negative error code.
     float measureDistanceCm() {
         clearPendingEchoEvents();   // Discard stale echo events
 
         // Ensure trigger starts LOW
         setTrig(false);
-        std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
-        // Send 10µs trigger pulse
+        // ── 2 ms settle via one-shot timerfd ─────────────────────────────────
+        // timerfd_create + timerfd_settime arms a one-shot kernel timer.
+        // read() blocks (zero CPU) until it fires — guaranteed by the kernel
+        // scheduler, no busy looping.
+        {
+            int tfd = timerfd_create(CLOCK_MONOTONIC, 0);
+            if (tfd >= 0) {
+                itimerspec its{};
+                its.it_value.tv_sec  = 0;
+                its.it_value.tv_nsec = 2'000'000;   // 2 ms
+                timerfd_settime(tfd, 0, &its, nullptr);
+                uint64_t exp = 0;
+                read(tfd, &exp, sizeof(exp));        // blocks until timer fires
+                close(tfd);
+            }
+        }
+
+        // ── 10 µs trigger pulse via clock_nanosleep ───────────────────────────
+        // clock_nanosleep with CLOCK_MONOTONIC is a true kernel sleep —
+        // the process is de-scheduled; it does not busy-loop.
+        // (timerfd cannot reliably arm below ~1 ms, so nanosleep is the
+        //  correct POSIX tool here for sub-millisecond precision.)
         setTrig(true);
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
+        {
+            timespec req{};
+            req.tv_sec  = 0;
+            req.tv_nsec = 10'000;   // 10 µs
+            clock_nanosleep(CLOCK_MONOTONIC, 0, &req, nullptr);
+        }
         setTrig(false);
 
         // Wait for echo rising edge (sound wave leaves sensor)

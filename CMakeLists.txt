@@ -20,10 +20,9 @@ add_executable(filling_machine
     src/utils/Logger.cpp
 )
 
-# lgpio  — relay/transistor pump control (Raspberry Pi GPIO)
-# gpiod  — libgpiod v2 C++ API (UltrasonicSensor, FlowMeter)
+# All three hardware drivers now use libgpiod (officially supported on Raspberry Pi OS).
+# lgpio has been removed — it was a hobbyist library not officially supported.
 target_link_libraries(filling_machine
-    lgpio
     gpiod
     pthread
 )
