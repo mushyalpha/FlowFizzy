@@ -24,7 +24,7 @@ bool PumpController::init() {
         // Configure the pump pin as output, idle = pump OFF
         gpiod::line_config lineCfg;
         lineCfg.add_line_settings(
-            {pumpPin_},
+            gpiod::line::offsets({pumpPin_}),
             gpiod::line_settings()
                 .set_direction(gpiod::line::direction::OUTPUT)
                 .set_output_value(offValue()));   // start de-energised
