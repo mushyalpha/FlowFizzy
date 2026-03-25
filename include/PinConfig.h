@@ -6,8 +6,8 @@
 constexpr int TRIG_PIN = 23;   // GPIO23 — trigger output
 constexpr int ECHO_PIN = 24;   // GPIO24 — echo input
 
-// DC Water Pump (via TIP121 transistor)
-constexpr int PUMP_PIN = 27;   // GPIO27 — pump control output
+// DC Water Pump (via TIP121 transistor or relay)
+constexpr int PUMP_PIN = 18;   // GPIO18 (BCM)
 
 // YF-S401 Flow Meter
 constexpr int FLOW_PIN = 17;   // GPIO17 — pulse input (to be confirmed)

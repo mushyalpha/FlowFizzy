@@ -42,7 +42,8 @@ public:
 private:
     // Relay module: active-LOW (de-energise = HIGH, pump ON = LOW)
     // Transistor:   active-HIGH (pin HIGH = pump ON)
-    static constexpr bool RELAY_MODE = true;
+    // Based on user testing, 1 = ON and 0 = OFF, so we use transistor mode (active-HIGH).
+    static constexpr bool RELAY_MODE = false;
 
     gpiod::line::value onValue()  const;
     gpiod::line::value offValue() const;
