@@ -92,3 +92,13 @@ add_executable(lcd_integration_test
 )
 target_include_directories(lcd_integration_test PRIVATE include src)
 target_link_libraries(lcd_integration_test pthread)
+
+# Pump + FlowMeter + LCD — tests all three without the ultrasonic sensor
+add_executable(hardware_trio_test
+    tests/HardwareTrioTest.cpp
+    src/hardware/PumpController.cpp
+    src/hardware/FlowMeter.cpp
+    src/hardware/LcdDisplay.cpp
+)
+target_include_directories(hardware_trio_test PRIVATE include src)
+target_link_libraries(hardware_trio_test gpiodcxx pthread)
