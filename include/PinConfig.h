@@ -25,9 +25,10 @@ constexpr int LOOP_INTERVAL_MS = 1000;         // main loop interval (1 second)
 
 // ─── Flow Settings ───────────────────────────────────────────────────────────
 // YF-S401 spec: ~5880 pulses/litre  →  1000 mL / 5880 pulses ≈ 0.1701 mL/pulse
-// Fine-tune this after physical calibration (fill a known volume, count pulses).
-constexpr double ML_PER_PULSE    = 0.1701;     // YF-S401 datasheet (calibrate!)
-constexpr double TARGET_VOLUME_ML = 500.0;     // target fill volume
+// CALIBRATED 2026-04-02: 2711 pulses measured for 200 ml actual
+// → 200 / 2711 = 0.073774 ml/pulse (sensor runs ~2× datasheet rate)
+constexpr double ML_PER_PULSE    = 0.073774;  // calibrated
+constexpr double TARGET_VOLUME_ML = 200.0;    // dispense 200 ml per fill
 
 // ─── GPIO Chip ───────────────────────────────────────────────────────────
 // /dev/gpiochip4 for Raspberry Pi 5; use 0 for Pi 1–4.
