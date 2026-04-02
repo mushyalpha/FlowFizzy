@@ -32,4 +32,10 @@ constexpr unsigned int GPIO_CHIP_NO = 4u;  // libgpiod chip number
 // ─── Sensor Timing ───────────────────────────────────────────────────────────
 constexpr int SENSOR_PERIOD_MS = 200;      // 5 Hz ultrasonic sampling rate
 
+// ─── I2C LCD (Freenove LCD1602 with PCF8574T backpack) ───────────────────────
+// Physical wiring: SDA→Pin3 (GPIO2), SCL→Pin5 (GPIO3), VDD→Pin2 (5V), VSS→GND
+// Run `i2cdetect -y 1` to confirm address: default = 0x27, alt (jumper) = 0x3F
+constexpr int LCD_I2C_BUS     = 1;     // /dev/i2c-1
+constexpr int LCD_I2C_ADDRESS = 0x27;  // PCF8574T default
+
 #endif // PINCONFIG_H

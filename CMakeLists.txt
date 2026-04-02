@@ -14,6 +14,7 @@ add_executable(filling_machine
     src/hardware/UltrasonicSensor.cpp
     src/hardware/PumpController.cpp
     src/hardware/FlowMeter.cpp
+    src/hardware/LcdDisplay.cpp
     src/state/FillingController.cpp
     src/monitor/Monitor.cpp
     src/utils/Timer.cpp
@@ -23,7 +24,7 @@ add_executable(filling_machine
 # All three hardware drivers now use libgpiod (officially supported on Raspberry Pi OS).
 # lgpio has been removed — it was a hobbyist library not officially supported.
 target_link_libraries(filling_machine
-    gpiod
+    gpiodcxx
     pthread
 )
 
@@ -82,4 +83,12 @@ add_executable(pump_integration_test
     src/hardware/PumpController.cpp
 )
 target_include_directories(pump_integration_test PRIVATE include src)
-target_link_libraries(pump_integration_test gpiod pthread)
+target_link_libraries(pump_integration_test gpiodcxx pthread)
+
+# LCD is driven via i2c-dev (kernel ioctl) — no gpiod needed
+add_executable(lcd_integration_test
+    tests/LcdIntegrationTest.cpp
+    src/hardware/LcdDisplay.cpp
+)
+target_include_directories(lcd_integration_test PRIVATE include src)
+target_link_libraries(lcd_integration_test pthread)

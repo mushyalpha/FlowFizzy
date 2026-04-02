@@ -2,6 +2,7 @@
 #include "hardware/UltrasonicSensor.h"
 #include "hardware/PumpController.h"
 #include "hardware/FlowMeter.h"
+#include "hardware/LcdDisplay.h"
 #include "state/FillingController.h"
 #include "monitor/Monitor.h"
 #include "utils/Timer.h"
@@ -13,10 +14,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 int main() {
-    // ── Construct hardware drivers (all use libgpiod internally) ─────────────
+    // ── Construct hardware drivers ────────────────────────────────────────────
     UltrasonicSensor sensor(GPIO_CHIP_NO, TRIG_PIN, ECHO_PIN, SENSOR_PERIOD_MS);
     PumpController   pump(GPIO_CHIP_NO, PUMP_PIN);
     FlowMeter        flowMeter(GPIO_CHIP_NO, FLOW_PIN, static_cast<float>(ML_PER_PULSE));
+    LcdDisplay       lcd(LCD_I2C_BUS, LCD_I2C_ADDRESS);
 
     // ── Initialise hardware ───────────────────────────────────────────────────
     if (!sensor.init()) {
@@ -34,6 +36,10 @@ int main() {
         sensor.shutdown();
         return 1;
     }
+    if (!lcd.init()) {
+        // LCD failure is non-fatal — the machine still works without a display
+        Logger::error("Failed to initialise LcdDisplay — continuing without display");
+    }
 
     // ── State machine + monitor ───────────────────────────────────────────────
     FillingController controller(sensor, pump, flowMeter,
@@ -45,6 +51,8 @@ int main() {
     Monitor monitor;
     controller.registerMonitor([&](const std::string& state, double vol, int bottles) {
         monitor.onStateChange(state, vol, bottles);
+        // Update LCD row 0 (state) and prime row 1; row 1 refreshes every tick
+        lcd.showStatus(state, vol, bottles);
     });
 
     Logger::info("=== AquaFlow Filling Machine Started ===");
@@ -59,6 +67,8 @@ int main() {
     Timer loopTimer(LOOP_INTERVAL_MS);
     loopTimer.registerCallback([&]() {
         controller.tick();
+        // Real-time volume update: reads atomic FlowMeter counter, updates LCD row 1
+        lcd.showVolume(flowMeter.getVolumeML());
     });
     loopTimer.start();
 
@@ -77,6 +87,7 @@ int main() {
 
     // ── Shutdown ──────────────────────────────────────────────────────────────
     loopTimer.stop();
+    lcd.shutdown();      // prints goodbye + turns backlight off
     flowMeter.shutdown();
     pump.shutdown();
     sensor.shutdown();
