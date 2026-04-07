@@ -11,7 +11,7 @@ include_directories(src)       # hardware/, state/, monitor/, utils/ sub-paths
 # ── Main executable ───────────────────────────────────────────────────────────
 add_executable(filling_machine
     src/main.cpp
-    src/hardware/UltrasonicSensor.cpp
+    src/hardware/GestureSensor.cpp
     src/hardware/PumpController.cpp
     src/hardware/FlowMeter.cpp
     src/hardware/LcdDisplay.cpp
