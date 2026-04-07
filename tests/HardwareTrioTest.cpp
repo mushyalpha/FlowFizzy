@@ -2,6 +2,7 @@
 #include "hardware/PumpController.h"
 #include "hardware/FlowMeter.h"
 #include "hardware/LcdDisplay.h"
+#include "hardware/GestureSensor.h"
 
 #include <atomic>
 #include <chrono>
@@ -21,7 +22,7 @@ void signalHandler(int signum) {
 int main() {
     std::signal(SIGINT, signalHandler);
 
-    std::cout << "=== Pump + Flow Meter + LCD Integration Test ===\n";
+    std::cout << "=== Touchless Dispenser Integration Test ===\n";
     std::cout << "Target volume : " << TARGET_VOLUME_ML << " ml\n";
     std::cout << "ML per pulse  : " << ML_PER_PULSE << "\n\n";
 
@@ -29,6 +30,7 @@ int main() {
     PumpController pump(GPIO_CHIP_NO, PUMP_PIN);
     FlowMeter      flow(GPIO_CHIP_NO, FLOW_PIN, static_cast<float>(ML_PER_PULSE));
     LcdDisplay     lcd(LCD_I2C_BUS, LCD_I2C_ADDRESS);
+    GestureSensor  gesture; // defaults to bus 1, addr 0x39, thresh 100
 
     // ── Initialise ────────────────────────────────────────────────────────────
     if (!pump.init()) {
@@ -39,64 +41,79 @@ int main() {
         pump.shutdown(); return 1;
     }
     if (!lcd.init()) {
-        // Non-fatal — continue without display
         std::cerr << "WARNING: LcdDisplay failed to init — continuing without display\n";
     }
+    if (!gesture.init()) {
+        std::cerr << "ERROR: GestureSensor failed to init\n";
+        pump.shutdown(); flow.shutdown(); return 1;
+    }
 
-    // ── Splash ────────────────────────────────────────────────────────────────
-    lcd.print(0, "AquaFlow Test");
-    lcd.print(1, "Starting...");
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    if (!keepRunning) goto cleanup;
+    std::atomic<bool> isDispensing(false);
+    std::atomic<bool> targetReached(false);
 
-    // ── Reset flow counter and start pump ─────────────────────────────────────
-    flow.resetCount();
-    lcd.showStatus("FILLING", 0.0, 0);
-    pump.turnOn();
-    std::cout << "Pump ON — dispensing to " << TARGET_VOLUME_ML << " ml...\n";
+    gesture.registerEventCallback([&](const GestureEvent& ev) {
+        if (ev.state == ProximityState::PROXIMITY_TRIGGERED) {
+            std::cout << "\nCup detected! Ready to dispense.\n";
+            // Start pour only if we aren't already dispensing or haven't hit target yet
+            if (!isDispensing && !targetReached) {
+                flow.resetCount();
+                isDispensing = true;
+                pump.turnOn();
+            }
+        } else if (ev.state == ProximityState::PROXIMITY_CLEARED) {
+            std::cout << "\nCup removed! Dispensing stopped.\n";
+            isDispensing = false;
+            targetReached = false; // reset for next cup
+            pump.turnOff();
+        }
+    });
+
+    lcd.print(0, "Place Cup");
+    lcd.print(1, "to Dispense");
 
     // ── Live volume loop ──────────────────────────────────────────────────────
-    // (sleep_for is acceptable here — this is a sequential integration test,
-    //  not the event-driven main application)
     while (keepRunning) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-        double vol = flow.getVolumeML();
-        int    pulses = flow.getPulseCount();
+        if (isDispensing) {
+            double vol = flow.getVolumeML();
+            int pulses = flow.getPulseCount();
 
-        // Update LCD row 1 with live volume
-        lcd.showVolume(vol);
+            lcd.showVolume(vol);
 
-        // Console readout
-        std::cout << "\r  Pulses: " << std::setw(5) << pulses
-                  << "   Vol: " << std::fixed << std::setprecision(1)
-                  << std::setw(7) << vol << " ml"
-                  << std::flush;
+            std::cout << "\r  Pulses: " << std::setw(5) << pulses
+                      << "   Vol: " << std::fixed << std::setprecision(1)
+                      << std::setw(7) << vol << " ml"
+                      << std::flush;
 
-        // Stop when target reached
-        if (flow.hasReachedTarget(TARGET_VOLUME_ML)) {
-            std::cout << "\n\nTarget reached!\n";
-            break;
+            // Stop when target reached
+            if (flow.hasReachedTarget(TARGET_VOLUME_ML)) {
+                std::cout << "\nTarget reached!\n";
+                pump.turnOff();
+                isDispensing = false;
+                targetReached = true;
+                
+                lcd.showStatus("DONE", vol, 1);
+                
+                // Show DONE for 2 seconds, then prompt for next cup if removed
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+                lcd.print(0, "Remove Cup");
+                lcd.print(1, "");
+            }
+        } else if (!targetReached) {
+            // Idle state wait for cup
+            lcd.print(0, "Place Cup");
+            lcd.print(1, "to Dispense");
         }
     }
 
-    // ── Stop pump ─────────────────────────────────────────────────────────────
-    pump.turnOff();
-    {
-        double finalVol = flow.getVolumeML();
-        std::cout << "Final volume : " << std::fixed << std::setprecision(2)
-                  << finalVol << " ml (" << flow.getPulseCount() << " pulses)\n";
-
-        lcd.showStatus("DONE", finalVol, 1);
-        lcd.showVolume(finalVol);
-        std::this_thread::sleep_for(std::chrono::seconds(3));
-    }
-
 cleanup:
+    pump.turnOff();
     pump.shutdown();
     flow.shutdown();
     lcd.shutdown();
+    gesture.shutdown();
 
-    std::cout << "Test complete.\n";
+    std::cout << "\nTest complete.\n";
     return 0;
 }

@@ -99,6 +99,7 @@ add_executable(hardware_trio_test
     src/hardware/PumpController.cpp
     src/hardware/FlowMeter.cpp
     src/hardware/LcdDisplay.cpp
+    src/hardware/GestureSensor.cpp
 )
 target_include_directories(hardware_trio_test PRIVATE include src)
 target_link_libraries(hardware_trio_test gpiodcxx pthread)
