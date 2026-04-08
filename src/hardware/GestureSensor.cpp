@@ -136,26 +136,30 @@ void GestureSensor::worker() {
                     uint8_t l = readRegister(APDS9960_GFIFO_L);
                     uint8_t r = readRegister(APDS9960_GFIFO_R);
 
-                    // Calculate deltas
                     int ud = (int)u - (int)d;
                     int lr = (int)l - (int)r;
                     
-                    // Filter noise
-                    if (std::abs(ud) > 13) gesture_ud_delta_ += ud;
-                    if (std::abs(lr) > 13) gesture_lr_delta_ += lr;
+                    // Capture the FIRST strong directional imbalance (the entry point of the hand)
+                    // If U is much brighter than D, hand entered from top (Swiping Down)
+                    if (gesture_ud_delta_ == 0 && std::abs(ud) > 15) {
+                        gesture_ud_delta_ = ud;
+                    }
+                    if (gesture_lr_delta_ == 0 && std::abs(lr) > 15) {
+                        gesture_lr_delta_ = lr;
+                    }
                 }
                 gesture_active_ = true;
             } else if (gesture_active_) {
                 // Buffer is empty, meaning the gesture has finished. Evaluate direction!
                 GestureDir dir = GestureDir::NONE;
 
-                // Determine if it was primarily a vertical or horizontal swipe
+                // Evaluate direction based on which axis had the strongest entry signal
                 if (std::abs(gesture_ud_delta_) > std::abs(gesture_lr_delta_)) {
-                    if (gesture_ud_delta_ > 30) dir = GestureDir::DOWN;
-                    else if (gesture_ud_delta_ < -30) dir = GestureDir::UP;
-                } else {
-                    if (gesture_lr_delta_ > 30) dir = GestureDir::RIGHT;
-                    else if (gesture_lr_delta_ < -30) dir = GestureDir::LEFT;
+                    if (gesture_ud_delta_ > 0) dir = GestureDir::DOWN; // U > D
+                    else dir = GestureDir::UP; // D > U
+                } else if (std::abs(gesture_lr_delta_) > 0) {
+                    if (gesture_lr_delta_ > 0) dir = GestureDir::RIGHT; // L > R
+                    else dir = GestureDir::LEFT; // R > L
                 }
 
                 if (dir != GestureDir::NONE && eventCallback_) {
