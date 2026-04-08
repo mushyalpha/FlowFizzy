@@ -21,8 +21,7 @@ void signalHandler(int signum) {
 int main() {
     std::signal(SIGINT, signalHandler);
 
-    std::cout << "=== Touchless Dispenser Terminal Test ===\n";
-    std::cout << "Target volume : " << TARGET_VOLUME_ML << " ml\n";
+    std::cout << "=== Touchless Dispenser Gesture Terminal Test ===\n";
     std::cout << "ML per pulse  : " << ML_PER_PULSE << "\n\n";
 
     // ── Construct ─────────────────────────────────────────────────────────────
@@ -47,17 +46,42 @@ int main() {
     std::atomic<bool> targetReached(false);
     bool waitingMessagePrinted = false;
 
+    // McDonalds UK Sizes!
+    std::atomic<int> activeTargetVolume(400); // Default to Medium
+
     gesture.registerEventCallback([&](const GestureEvent& ev) {
+        
+        // 1. Gesture Size Selection Logic
+        if (ev.direction == GestureDir::LEFT) {
+            if (activeTargetVolume == 500) activeTargetVolume = 400; // L -> M
+            else if (activeTargetVolume == 400) activeTargetVolume = 250; // M -> S
+            
+            std::cout << "\n<<< SWIPE LEFT: Size decreased to ";
+            if (activeTargetVolume == 250) std::cout << "SMALL (250ml)\n";
+            else std::cout << "MEDIUM (400ml)\n";
+            waitingMessagePrinted = false;
+        } 
+        else if (ev.direction == GestureDir::RIGHT) {
+            if (activeTargetVolume == 250) activeTargetVolume = 400; // S -> M
+            else if (activeTargetVolume == 400) activeTargetVolume = 500; // M -> L
+            
+            std::cout << "\n>>> SWIPE RIGHT: Size increased to ";
+            if (activeTargetVolume == 500) std::cout << "LARGE (500ml)\n";
+            else std::cout << "MEDIUM (400ml)\n";
+            waitingMessagePrinted = false;
+        }
+
+        // 2. Proximity Dispensing Logic
         if (ev.state == ProximityState::PROXIMITY_TRIGGERED) {
-            std::cout << "\n>>> CUP DETECTED! Ready to dispense.\n";
-            // Start pour only if we aren't already dispensing or haven't hit target yet
+            std::cout << "\n>>> CUP DETECTED! Dispensing " << activeTargetVolume << " ml.\n";
             if (!isDispensing && !targetReached) {
                 flow.resetCount();
                 isDispensing = true;
                 waitingMessagePrinted = false;
                 pump.turnOn();
             }
-        } else if (ev.state == ProximityState::PROXIMITY_CLEARED) {
+        } 
+        else if (ev.state == ProximityState::PROXIMITY_CLEARED) {
             std::cout << "\n>>> CUP REMOVED! Dispensing stopped.\n";
             isDispensing = false;
             targetReached = false; // reset for next cup
@@ -66,7 +90,8 @@ int main() {
         }
     });
 
-    std::cout << "\n[-] System idle. Place a cup in front of sensor to begin...\n";
+    std::cout << "\n[-] System idle. Swipe Left/Right to select size.\n";
+    std::cout << "[-] Current Size: MEDIUM (400ml). Place cup to dispense...\n";
 
     // ── Live volume loop ──────────────────────────────────────────────────────
     while (keepRunning) {
@@ -81,9 +106,9 @@ int main() {
                       << std::setw(7) << vol << " ml"
                       << std::flush;
 
-            // Stop when target reached
-            if (flow.hasReachedTarget(TARGET_VOLUME_ML)) {
-                std::cout << "\n\n*** TARGET REACHED! ***\n";
+            // Stop when we hit the dynamically selected size
+            if (flow.hasReachedTarget((double)activeTargetVolume)) {
+                std::cout << "\n\n*** TARGET " << activeTargetVolume << "ml REACHED! ***\n";
                 pump.turnOff();
                 isDispensing = false;
                 targetReached = true;
@@ -97,7 +122,7 @@ int main() {
         } else {
             // Idle but no target reached and not dispensing
             if (!waitingMessagePrinted) {
-                std::cout << "\n[-] System idle. Place a cup in front of sensor to begin...\n";
+                std::cout << "\n[-] System idle. Swipe Left/Right to change size or place cup...\n";
                 waitingMessagePrinted = true;
             }
         }

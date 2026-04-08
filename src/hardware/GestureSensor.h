@@ -13,8 +13,17 @@ enum class ProximityState {
     PROXIMITY_CLEARED
 };
 
+enum class GestureDir {
+    NONE,
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT
+};
+
 struct GestureEvent {
     ProximityState state;
+    GestureDir direction;
     int proximityValue;
 };
 
@@ -47,4 +56,9 @@ private:
 
     EventCallback eventCallback_;
     ErrorCallback errorCallback_;
+
+    // Gesture decoding buffer
+    int gesture_ud_delta_{0};
+    int gesture_lr_delta_{0};
+    bool gesture_active_{false};
 };
