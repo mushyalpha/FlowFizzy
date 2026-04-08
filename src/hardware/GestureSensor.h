@@ -32,7 +32,7 @@ public:
     using EventCallback = std::function<void(const GestureEvent&)>;
     using ErrorCallback = std::function<void(const std::string&)>;
 
-    GestureSensor(int i2cBus = 1, int i2cAddr = 0x39, int threshold = 100);
+    GestureSensor(int i2cBus = 1, int i2cAddr = 0x39, int threshold = 40);
     ~GestureSensor() override;
 
     bool init() override;

@@ -55,8 +55,8 @@ bool GestureSensor::init() {
 
         // Configure Gesture Engine
         // Set enter and exit thresholds
-        writeRegister(APDS9960_GPENTH, 40); // Enter gesture state when prox > 40
-        writeRegister(APDS9960_GEXTH, 30);  // Exit gesture state when prox < 30
+        writeRegister(APDS9960_GPENTH, 50); // Enter gesture state when prox > 50
+        writeRegister(APDS9960_GEXTH, 40);  // Exit gesture state when prox < 40
         
         // GCONF2: GGAIN=4x, GLDRIVE=100mA, GWTIME=2.8ms
         writeRegister(APDS9960_GCONF2, 0x41);
