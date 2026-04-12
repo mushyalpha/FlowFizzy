@@ -11,7 +11,7 @@
 
 ### S - Single Responsibility Principle
 - [ ] **Every class has exactly ONE clearly-defined responsibility.** No "god classes" doing multiple jobs (e.g., a class that both reads the sensor AND controls the pump AND logs simultaneously).
-- [ ] **Confirm current classes are properly separated:** `FlowMeter`, `PumpController`, `LcdDisplay`, `GestureSensor`, `UltrasonicSensor`, `FillingController`, `Monitor`, `Timer`, `Logger` - each should own one concern only.
+- [ ] **Confirm current classes are properly separated:** `GestureSensor`, `PumpController`, `FlowMeter`, `LcdDisplay`, `FillingController`, `Monitor`, `Timer`, `Logger` — each should own one concern only.
 - [ ] **Document in README/docs** which responsibility each class owns (justifies SRP compliance to the marker).
 
 ### O - Open/Closed Principle
@@ -77,19 +77,19 @@
 
 ### 4a. Timing Requirements - DOCUMENT THIS (easy marks, often missed!)
 - [ ] **State your system's timing requirements explicitly in the README or docs.** e.g.:
-  - *"The pump must respond to a cup-detected event within X ms."*
-  - *"The flow meter samples at Y Hz, so the callback must complete in < Z ms."*
-  - *"The ultrasonic sensor polls at 100ms intervals."*
-  - Professor says ~30% of teams miss this and "earn a straight fail for it" - **do not skip**.
+  - *"The pump must respond to a cup-detected event within 50 ms of a proximity event."*
+  - *"The flow meter samples at interrupt-driven rate; callback must complete in < 10 ms."*
+  - *"The GestureSensor polls the APDS-9960 FIFO every 50 ms via timerfd."*
+  - *"The state-machine tick fires every 100 ms via timerfd."*
+  - Professor says ~30% of teams miss this and "earn a straight fail for it" — **do not skip**.
 
 ### 4b. Event-Driven, Non-Blocking Architecture
 - [ ] **No polling loops.** No `while(true) { check_sensor(); sleep(100ms); }` patterns.
 - [ ] **All I/O is event-driven:** threads block on a hardware event (GPIO interrupt, timerfd, I2C data-ready pin) and wake up only when data arrives.
 - [ ] **`Timer` class uses `timerfd`** (or equivalent blocking mechanism) - not a `sleep()` loop.
   -  **Current state:** `main.cpp` uses `loopTimer.registerCallback()` - confirm `Timer` internally uses `timerfd` or `std::condition_variable`, not `sleep()`.
-- [ ] **`FlowMeter` uses GPIO interrupt** on the pulse pin - not polling.
-- [ ] **`UltrasonicSensor`** uses its own worker thread with a blocking wait.
-- [ ] **`GestureSensor`** uses I2C interrupt (INT pin) or blocking read - not polling.
+- [ ] **`FlowMeter` uses GPIO interrupt** on the pulse pin — not polling.
+- [x] **`GestureSensor` uses `timerfd` blocking read** — replaced `sleep_for(50ms)` polling with a kernel-managed timerfd. Zero CPU between firings. ✅ Done.
 - [ ] **No `sleep()` or `usleep()` used to establish timing.** These are unreliable on Linux (multitasking OS). Search the codebase.
 
 ### 4c. Fast & Deterministic Callbacks
@@ -99,10 +99,9 @@
 
 ### 4d. Thread Architecture
 - [ ] **Each blocking I/O operation runs in its own dedicated worker thread:**
-  - `Timer` worker thread (timerfd → tick callback)
-  - `FlowMeter` worker thread (GPIO interrupt → pulse count)
-  - `UltrasonicSensor` worker thread
-  - `GestureSensor` worker thread (if applicable)
+  - `Timer` worker thread (timerfd → `FillingController::tick()` callback)
+  - `FlowMeter` worker thread (GPIO interrupt → pulse count, `atomic<int>`)
+  - `GestureSensor` worker thread (timerfd → I2C FIFO read → proximity callback → `atomic<bool>` in `FillingController`)
 - [ ] **`main()` thread only sleeps** (via `sigwait`) - it does not participate in any real-time processing.
 - [ ] **Thread-safe data sharing** - use `std::atomic` or `std::mutex`+`std::lock_guard` for any data accessed from multiple threads.
 - [ ] **No dead locks** - verify no two mutexes are locked in opposite orders in different threads.
