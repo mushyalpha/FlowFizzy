@@ -7,26 +7,35 @@ using Clock = std::chrono::steady_clock;
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-FillingController::FillingController(UltrasonicSensor& sensor,
+FillingController::FillingController(GestureSensor& gestureSensor,
                                      PumpController& pump,
-                                     FlowMeter& flowMeter,
-                                     double targetDistanceCM,
-                                     double toleranceCM,
-                                     int holdTimeSeconds,
-                                     double targetVolumeML)
-    : sensor_(sensor),
+                                     FlowMeter&      flowMeter,
+                                     int             holdTimeSeconds,
+                                     double          targetVolumeML)
+    : gestureSensor_(gestureSensor),
       pump_(pump),
       flowMeter_(flowMeter),
-      targetDistanceCM_(targetDistanceCM),
-      toleranceCM_(toleranceCM),
       holdTimeSeconds_(holdTimeSeconds),
       targetVolumeML_(targetVolumeML),
       state_(SystemState::WAITING),
       holdStartTime_(),
-      lastDistance_(-1.0),
       bottleCount_(0),
       monitorCallback_(nullptr)
 {
+    // Register proximity callback on the GestureSensor.
+    // This lambda is called from the GestureSensor worker thread whenever
+    // proximity state changes.  It only writes to bottlePresent_ (atomic),
+    // so no mutex needed — the actual state-machine logic stays in tick().
+    gestureSensor_.registerEventCallback([this](const GestureEvent& event) {
+        if (event.state == ProximityState::PROXIMITY_TRIGGERED) {
+            bottlePresent_.store(true, std::memory_order_relaxed);
+            std::cout << "[GestureSensor] Proximity TRIGGERED (val="
+                      << event.proximityValue << ")\n";
+        } else if (event.state == ProximityState::PROXIMITY_CLEARED) {
+            bottlePresent_.store(false, std::memory_order_relaxed);
+            std::cout << "[GestureSensor] Proximity CLEARED\n";
+        }
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,67 +45,46 @@ void FillingController::tick() {
 
     switch (state_) {
 
-    // ── WAITING: looking for a bottle ────────────────────────────────────────
+    // ── WAITING: no cup detected yet ─────────────────────────────────────────
     case SystemState::WAITING: {
-        lastDistance_ = sensor_.getDistanceCM();
-
-        if (lastDistance_ < 0) {
-            std::cout << "Sensor timeout\n";
-            return;
-        }
-
-        std::cout << "Measured Distance = " << lastDistance_ << " cm\n";
-
-        if (sensor_.isBottlePresent(targetDistanceCM_, toleranceCM_)) {
-            // Bottle detected — start hold timer
+        if (bottlePresent_.load(std::memory_order_relaxed)) {
+            // Proximity event fired — start hold timer
             holdStartTime_ = Clock::now();
             state_ = SystemState::CONFIRMATION;
-            std::cout << targetDistanceCM_ << " cm detected, starting timer...\n";
+            std::cout << "Cup detected! Starting confirmation timer...\n";
         }
         break;
     }
 
-    // ── CONFIRMATION: bottle must stay stable for holdTimeSeconds_ ───────────
+    // ── CONFIRMATION: cup must stay present for holdTimeSeconds_ ─────────────
     case SystemState::CONFIRMATION: {
-        lastDistance_ = sensor_.getDistanceCM();
-
-        if (lastDistance_ < 0) {
-            std::cout << "Sensor timeout, timer reset.\n";
-            state_ = SystemState::WAITING;
-            return;
-        }
-
-        std::cout << "Measured Distance = " << lastDistance_ << " cm\n";
-
-        if (!sensor_.isBottlePresent(targetDistanceCM_, toleranceCM_)) {
-            // Bottle moved away — reset timer
-            std::cout << "Distance moved away from " << targetDistanceCM_
-                      << " cm, timer reset.\n";
+        if (!bottlePresent_.load(std::memory_order_relaxed)) {
+            // Cup removed before timer expired — reset
+            std::cout << "Cup removed before confirmation — resetting.\n";
             state_ = SystemState::WAITING;
             break;
         }
 
-        // Bottle still present — check elapsed time
         double elapsed = getHoldElapsed();
         std::cout << std::setprecision(1)
-                  << "Held for " << elapsed << " / " << holdTimeSeconds_
-                  << " seconds\n";
+                  << "Confirming cup: " << elapsed
+                  << " / " << holdTimeSeconds_ << " s\n";
 
         if (elapsed >= holdTimeSeconds_) {
-            // Hold time reached — reset flow counter and start pump
+            // Confirmed — reset meter and start pump
             flowMeter_.resetCount();
             pump_.turnOn();
             state_ = SystemState::FILLING;
-            std::cout << "Bottle confirmed! Starting fill to "
+            std::cout << "Cup confirmed! Filling to "
                       << std::setprecision(0) << targetVolumeML_ << " ml\n";
         }
         break;
     }
 
-    // ── FILLING: pump running, counting flow pulses ──────────────────────────
+    // ── FILLING: pump running, counting flow pulses ───────────────────────────
     case SystemState::FILLING: {
         double currentML = flowMeter_.getVolumeML();
-        int pulses = flowMeter_.getPulseCount();
+        int    pulses    = flowMeter_.getPulseCount();
 
         std::cout << std::setprecision(1)
                   << "Filling: " << currentML << " ml / "
@@ -104,7 +92,6 @@ void FillingController::tick() {
                   << "  (" << pulses << " pulses)\n";
 
         if (flowMeter_.hasReachedTarget(targetVolumeML_)) {
-            // Target volume reached — stop pump
             pump_.turnOff();
             bottleCount_++;
             state_ = SystemState::FILL_COMPLETE;
@@ -115,12 +102,11 @@ void FillingController::tick() {
         break;
     }
 
-    // ── FILL_COMPLETE: pump off, ready for next bottle ───────────────────────
+    // ── FILL_COMPLETE: pump off, reset for next cup ───────────────────────────
     case SystemState::FILL_COMPLETE: {
-        // Reset flow counter for next bottle
         flowMeter_.resetCount();
         state_ = SystemState::WAITING;
-        std::cout << "Fill complete. Waiting for next bottle...\n";
+        std::cout << "Fill complete. Waiting for next cup...\n";
         break;
     }
     }

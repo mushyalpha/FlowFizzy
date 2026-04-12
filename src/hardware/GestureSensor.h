@@ -6,6 +6,9 @@
 #include <atomic>
 #include <string>
 #include <cstdint>
+#include <cstdint>  // uint8_t
+// timerfd_create / timerfd_settime (replaces sleep-based polling)
+#include <sys/timerfd.h>
 
 enum class ProximityState {
     NONE,
@@ -49,8 +52,9 @@ private:
     int i2cBus_;
     int i2cAddr_;
     int threshold_;
-    int fd_{-1};
-    
+    int fd_{-1};       ///< I2C file descriptor
+    int timerFd_{-1};  ///< timerfd used for RTES-compliant blocking wait (replaces sleep)
+
     std::atomic<bool> running_{false};
     std::thread workerThread_;
 

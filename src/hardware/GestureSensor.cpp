@@ -1,11 +1,13 @@
 #include "hardware/GestureSensor.h"
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
+#include <sys/timerfd.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
 #include <cmath>
+#include <stdexcept>
 
 #define APDS9960_ID 0x92
 #define APDS9960_ENABLE 0x80
@@ -66,6 +68,22 @@ bool GestureSensor::init() {
         writeRegister(APDS9960_ENABLE, 0x45);
 
         running_ = true;
+
+        // ── RTES: create a timerfd for the poll interval instead of sleep ────
+        // blocking read() on a timerfd is a proper kernel sleep — zero CPU,
+        // unlike std::this_thread::sleep_for which may busy-wait internally.
+        timerFd_ = timerfd_create(CLOCK_MONOTONIC, 0);
+        if (timerFd_ < 0)
+            throw std::runtime_error("GestureSensor: timerfd_create failed");
+
+        struct itimerspec its{};
+        its.it_value.tv_sec     = 0;
+        its.it_value.tv_nsec    = POLL_INTERVAL_MS * 1'000'000L;  // first fire
+        its.it_interval.tv_sec  = 0;
+        its.it_interval.tv_nsec = POLL_INTERVAL_MS * 1'000'000L;  // repeat
+        if (timerfd_settime(timerFd_, 0, &its, nullptr) < 0)
+            throw std::runtime_error("GestureSensor: timerfd_settime failed");
+
         workerThread_ = std::thread(&GestureSensor::worker, this);
         return true;
     } catch (const std::exception& e) {
@@ -81,6 +99,12 @@ bool GestureSensor::init() {
 void GestureSensor::shutdown() {
     if (!running_) return;
     running_ = false;
+
+    // Close timerfd first so the blocking read() in the worker unblocks
+    if (timerFd_ >= 0) {
+        close(timerFd_);
+        timerFd_ = -1;
+    }
 
     if (workerThread_.joinable()) {
         workerThread_.join();
@@ -188,8 +212,14 @@ void GestureSensor::worker() {
             if (errorCallback_) errorCallback_(e.what());
         }
 
-        // Loop runs moderately fast to ensure we don't miss FIFO interrupts
-        std::this_thread::sleep_for(std::chrono::milliseconds(POLL_INTERVAL_MS));
+        // ── RTES-compliant blocking wait ──────────────────────────────────────
+        // Block on timerfd instead of sleep_for. The kernel wakes this thread
+        // at exactly POLL_INTERVAL_MS boundaries, consuming zero CPU while idle.
+        // If timerFd_ was closed by shutdown(), read() returns -1 → loop exits.
+        uint64_t expirations = 0;
+        if (::read(timerFd_, &expirations, sizeof(expirations)) < 0) {
+            break;  // timerfd closed by shutdown() — clean exit
+        }
     }
 }
 

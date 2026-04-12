@@ -1,5 +1,5 @@
 #include "PinConfig.h"
-#include "hardware/UltrasonicSensor.h"
+#include "hardware/GestureSensor.h"
 #include "hardware/PumpController.h"
 #include "hardware/FlowMeter.h"
 #include "hardware/LcdDisplay.h"
@@ -15,25 +15,25 @@
 
 int main() {
     // ── Construct hardware drivers ────────────────────────────────────────────
-    UltrasonicSensor sensor(GPIO_CHIP_NO, TRIG_PIN, ECHO_PIN, SENSOR_PERIOD_MS);
+    GestureSensor    gestureSensor(GESTURE_I2C_BUS, GESTURE_I2C_ADDR, GESTURE_THRESHOLD);
     PumpController   pump(GPIO_CHIP_NO, PUMP_PIN);
     FlowMeter        flowMeter(GPIO_CHIP_NO, FLOW_PIN, static_cast<float>(ML_PER_PULSE));
     LcdDisplay       lcd(LCD_I2C_BUS, LCD_I2C_ADDRESS);
 
     // ── Initialise hardware ───────────────────────────────────────────────────
-    if (!sensor.init()) {
-        Logger::error("Failed to initialise UltrasonicSensor");
+    if (!gestureSensor.init()) {
+        Logger::error("Failed to initialise GestureSensor");
         return 1;
     }
     if (!pump.init()) {
         Logger::error("Failed to initialise PumpController");
-        sensor.shutdown();
+        gestureSensor.shutdown();
         return 1;
     }
     if (!flowMeter.init()) {
         Logger::error("Failed to initialise FlowMeter");
         pump.shutdown();
-        sensor.shutdown();
+        gestureSensor.shutdown();
         return 1;
     }
     if (!lcd.init()) {
@@ -42,32 +42,32 @@ int main() {
     }
 
     // ── State machine + monitor ───────────────────────────────────────────────
-    FillingController controller(sensor, pump, flowMeter,
-                                 TARGET_DISTANCE_CM,
-                                 DISTANCE_TOLERANCE_CM,
+    // FillingController registers itself as a GestureSensor proximity callback
+    // internally — no polling, fully event-driven.
+    FillingController controller(gestureSensor, pump, flowMeter,
                                  HOLD_TIME_SECONDS,
                                  TARGET_VOLUME_ML);
 
     Monitor monitor;
     controller.registerMonitor([&](const std::string& state, double vol, int bottles) {
         monitor.onStateChange(state, vol, bottles);
-        // Update LCD row 0 (state) and prime row 1; row 1 refreshes every tick
         lcd.showStatus(state, vol, bottles);
     });
 
     Logger::info("=== AquaFlow Filling Machine Started ===");
-    Logger::info("Target distance : " + std::to_string(TARGET_DISTANCE_CM) + " cm");
-    Logger::info("Tolerance       : +-" + std::to_string(DISTANCE_TOLERANCE_CM) + " cm");
-    Logger::info("Hold time       : " + std::to_string(HOLD_TIME_SECONDS) + " s");
-    Logger::info("Target volume   : " + std::to_string(TARGET_VOLUME_ML) + " ml");
+    Logger::info("Hold time     : " + std::to_string(HOLD_TIME_SECONDS) + " s");
+    Logger::info("Target volume : " + std::to_string(TARGET_VOLUME_ML) + " ml");
+    Logger::info("Gesture sensor: I2C bus " + std::to_string(GESTURE_I2C_BUS)
+                 + ", addr 0x" + "39");
 
     // ── RTES event-driven loop: timerfd fires tick(), no polling ─────────────
-    // The Timer uses a timerfd worker thread internally.  controller.tick()
-    // is called as a callback — main() never polls anything.
+    // The Timer blocks on a timerfd internally. controller.tick() is called as
+    // a callback — main() never polls anything, and the GestureSensor proximity
+    // events are delivered via a separate callback on its own worker thread.
     Timer loopTimer(LOOP_INTERVAL_MS);
     loopTimer.registerCallback([&]() {
         controller.tick();
-        // Real-time volume update: reads atomic FlowMeter counter, updates LCD row 1
+        // Real-time volume update on the LCD (reads atomic FlowMeter counter)
         lcd.showVolume(flowMeter.getVolumeML());
     });
     loopTimer.start();
@@ -85,12 +85,12 @@ int main() {
     sigwait(&sigset, &sig);   // blocks here until Ctrl+C or kill
     Logger::info("Signal " + std::to_string(sig) + " received — shutting down.");
 
-    // ── Shutdown ──────────────────────────────────────────────────────────────
+    // ── Shutdown (reverse init order) ────────────────────────────────────────
     loopTimer.stop();
-    lcd.shutdown();      // prints goodbye + turns backlight off
+    lcd.shutdown();
     flowMeter.shutdown();
     pump.shutdown();
-    sensor.shutdown();
+    gestureSensor.shutdown();
 
     Logger::info("AquaFlow stopped. Goodbye.");
     return 0;
