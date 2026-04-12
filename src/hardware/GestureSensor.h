@@ -58,7 +58,8 @@ private:
     ErrorCallback errorCallback_;
 
     // Gesture decoding buffer
-    int gesture_ud_delta_{0};
-    int gesture_lr_delta_{0};
+    uint8_t first_u_{0}, first_d_{0}, first_l_{0}, first_r_{0};
+    uint8_t last_u_{0}, last_d_{0}, last_l_{0}, last_r_{0};
+    int gesture_dataset_count_{0};
     bool gesture_active_{false};
 };

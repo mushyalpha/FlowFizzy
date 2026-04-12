@@ -136,39 +136,51 @@ void GestureSensor::worker() {
                     uint8_t l = readRegister(APDS9960_GFIFO_L);
                     uint8_t r = readRegister(APDS9960_GFIFO_R);
 
-                    int ud = (int)u - (int)d;
-                    int lr = (int)l - (int)r;
-                    
-                    // Capture the FIRST strong directional imbalance (the entry point of the hand)
-                    // If U is much brighter than D, hand entered from top (Swiping Down)
-                    if (gesture_ud_delta_ == 0 && std::abs(ud) > 15) {
-                        gesture_ud_delta_ = ud;
-                    }
-                    if (gesture_lr_delta_ == 0 && std::abs(lr) > 15) {
-                        gesture_lr_delta_ = lr;
+                    // Only process frames that show strong reflections (filter noise floor)
+                    if (std::abs((int)u - (int)d) > 13 || std::abs((int)l - (int)r) > 13) {
+                       if (gesture_dataset_count_ == 0) {
+                           // Record the exact entry moment
+                           first_u_ = u; first_d_ = d; first_l_ = l; first_r_ = r;
+                       }
+                       // Continually overwrite to get the exact exit moment
+                       last_u_ = u; last_d_ = d; last_l_ = l; last_r_ = r;
+                       gesture_dataset_count_++;
                     }
                 }
                 gesture_active_ = true;
             } else if (gesture_active_) {
                 // Buffer is empty, meaning the gesture has finished. Evaluate direction!
-                GestureDir dir = GestureDir::NONE;
+                
+                // Must have seen at least 4 valid frames to count as a human gesture (eliminates phantom UP/DOWN)
+                if (gesture_dataset_count_ > 4) { 
+                    int ud_first = first_u_ - first_d_;
+                    int lr_first = first_l_ - first_r_;
+                    int ud_last = last_u_ - last_d_;
+                    int lr_last = last_l_ - last_r_;
 
-                // Evaluate direction based on which axis had the strongest entry signal
-                if (std::abs(gesture_ud_delta_) > std::abs(gesture_lr_delta_)) {
-                    if (gesture_ud_delta_ > 0) dir = GestureDir::DOWN; // U > D
-                    else dir = GestureDir::UP; // D > U
-                } else if (std::abs(gesture_lr_delta_) > 0) {
-                    if (gesture_lr_delta_ > 0) dir = GestureDir::RIGHT; // L > R
-                    else dir = GestureDir::LEFT; // R > L
-                }
+                    // Vector Derivative: Final Position - Initial Position
+                    // This mathematically neutralizes ALL ambient hardware case reflections!
+                    int ud_delta = ud_last - ud_first;
+                    int lr_delta = lr_last - lr_first;
 
-                if (dir != GestureDir::NONE && eventCallback_) {
-                    eventCallback_({ProximityState::NONE, dir, prox});
+                    GestureDir dir = GestureDir::NONE;
+
+                    // Which axis changed the most structurally from start to end?
+                    if (std::abs(ud_delta) > std::abs(lr_delta)) {
+                        if (ud_delta > 0) dir = GestureDir::UP; // Went from D to U
+                        else dir = GestureDir::DOWN; // Went from U to D
+                    } else {
+                        if (lr_delta > 0) dir = GestureDir::LEFT; // Went from R to L
+                        else dir = GestureDir::RIGHT; // Went from L to R
+                    }
+
+                    if (dir != GestureDir::NONE && eventCallback_) {
+                        eventCallback_({ProximityState::NONE, dir, prox});
+                    }
                 }
 
                 // Reset for next swipe
-                gesture_ud_delta_ = 0;
-                gesture_lr_delta_ = 0;
+                gesture_dataset_count_ = 0;
                 gesture_active_ = false;
             }
 
