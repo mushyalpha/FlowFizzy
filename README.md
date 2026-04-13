@@ -30,19 +30,20 @@ Because the pump draws more current than the Pi can provide, it must be driven v
 
 Here is the exact breadboard wiring layout:
 
-*   **TIP122 Base (Pin 1 — connected at 11a):**
+*   **TIP122 Base (Pin 1 - connected at 11a):**
     *   One end of a **1k resistor** connects to `11c`.
     *   The other end of the resistor connects to `19f`.
     *   A wire from `19g` connects directly to **GPIO 18** on the Raspberry Pi.
-*   **TIP122 Collector (Pin 2 — connected at 12a):**
+*   **TIP122 Collector (Pin 2 - connected at 12a):**
     *   The pump's **black wire** connects to `12e`.
     *   The flyback diode's **non-striped side** connects to `12c`.
-*   **Power Rail (Positive voltage — Row 6):**
+*   **Power Rail (Positive voltage - Row 6):**
     *   The pump's **red wire** connects to `6e`.
-    *   The **5V supply wire** connects to `6d`.
+    *   The **5V supply wire** (from Pi or **External Powerbank Positive**) connects to `6d`.
     *   The flyback diode's **silver-striped side** connects to `6c`.
-*   **TIP122 Emitter (Pin 3 — connected at 13a):**
+*   **TIP122 Emitter (Pin 3 - connected at 13a):**
     *   A wire runs from `13e` directly to a **Ground (GND)** pin on the Raspberry Pi.
+    *   **⚡ CRITICAL:** If using an external powerbank, you MUST also connect the **Powerbank Ground (Negative) to the Pi's Ground**. Without this "common ground", the transistor circuit will not switch and the Pi could be damaged!
 
 *(Note: The diode placed backwards between the Collector and the Power rail acts as a flyback diode. This prevents high-voltage "kickback" spikes from destroying the Raspberry Pi when the pump motor abruptly turns off).*
 

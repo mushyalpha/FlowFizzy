@@ -21,7 +21,7 @@ A reference document for the various hardware components used in the AquaFlow pr
   - Water inlet outer diameter: 6.8 mm
   - Water outlet outer diameter: 7 mm
 - **Operating Notes:**
-  - Submersible only — not self-priming; water level must be above the pump at all times.
+  - Submersible only - not self-priming; water level must be above the pump at all times.
   - Running dry causes overheating and noise.
   - Rotor can clog; clean regularly if water quality is low.
 
@@ -46,7 +46,7 @@ A reference document for the various hardware components used in the AquaFlow pr
   - Black: GND
   - Yellow: Signal (pulse output)
 - **Operating Notes:**
-  - Hall effect sensor is sealed from the water path — stays dry.
+  - Hall effect sensor is sealed from the water path - stays dry.
   - Not self-priming; designed for inline use in an active flow path.
   - Clean water only; avoid chemical exposure and physical shock.
 

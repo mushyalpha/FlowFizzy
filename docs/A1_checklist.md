@@ -11,7 +11,7 @@
 
 ### S - Single Responsibility Principle
 - [ ] **Every class has exactly ONE clearly-defined responsibility.** No "god classes" doing multiple jobs (e.g., a class that both reads the sensor AND controls the pump AND logs simultaneously).
-- [ ] **Confirm current classes are properly separated:** `GestureSensor`, `PumpController`, `FlowMeter`, `LcdDisplay`, `FillingController`, `Monitor`, `Timer`, `Logger` — each should own one concern only.
+- [ ] **Confirm current classes are properly separated:** `GestureSensor`, `PumpController`, `FlowMeter`, `LcdDisplay`, `FillingController`, `Monitor`, `Timer`, `Logger` - each should own one concern only.
 - [ ] **Document in README/docs** which responsibility each class owns (justifies SRP compliance to the marker).
 
 ### O - Open/Closed Principle
@@ -81,15 +81,15 @@
   - *"The flow meter samples at interrupt-driven rate; callback must complete in < 10 ms."*
   - *"The GestureSensor polls the APDS-9960 FIFO every 50 ms via timerfd."*
   - *"The state-machine tick fires every 100 ms via timerfd."*
-  - Professor says ~30% of teams miss this and "earn a straight fail for it" — **do not skip**.
+  - Professor says ~30% of teams miss this and "earn a straight fail for it" - **do not skip**.
 
 ### 4b. Event-Driven, Non-Blocking Architecture
 - [ ] **No polling loops.** No `while(true) { check_sensor(); sleep(100ms); }` patterns.
 - [ ] **All I/O is event-driven:** threads block on a hardware event (GPIO interrupt, timerfd, I2C data-ready pin) and wake up only when data arrives.
 - [ ] **`Timer` class uses `timerfd`** (or equivalent blocking mechanism) - not a `sleep()` loop.
   -  **Current state:** `main.cpp` uses `loopTimer.registerCallback()` - confirm `Timer` internally uses `timerfd` or `std::condition_variable`, not `sleep()`.
-- [ ] **`FlowMeter` uses GPIO interrupt** on the pulse pin — not polling.
-- [x] **`GestureSensor` uses `timerfd` blocking read** — replaced `sleep_for(50ms)` polling with a kernel-managed timerfd. Zero CPU between firings. ✅ Done.
+- [ ] **`FlowMeter` uses GPIO interrupt** on the pulse pin - not polling.
+- [x] **`GestureSensor` uses `timerfd` blocking read** - replaced `sleep_for(50ms)` polling with a kernel-managed timerfd. Zero CPU between firings. ✅ Done.
 - [ ] **No `sleep()` or `usleep()` used to establish timing.** These are unreliable on Linux (multitasking OS). Search the codebase.
 
 ### 4c. Fast & Deterministic Callbacks
