@@ -2,6 +2,8 @@
 
 AquaFlow is a smart, fully-automated touchless water dispenser built on the Raspberry Pi using C++. It utilizes intelligent hardware monitoring to safely dispense exact volumes of water using proximity detection.
 
+For SOLID compliance, `FillingController` now depends on behavioral interfaces (`IProximitySensor`, `IPump`, `IFlowMeter`) instead of concrete drivers. We considered a template-based variant for zero-overhead static polymorphism, but chose runtime interfaces for clearer architecture and easier assessment traceability; at a 100 ms control interval, virtual dispatch overhead is negligible.
+
 ## Hardware Connections (Raspberry Pi Pinout)
 
 Below is the definitive hardware wiring guide to connect the sensors and pump to the Raspberry Pi.

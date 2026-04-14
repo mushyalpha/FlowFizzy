@@ -116,3 +116,18 @@ A master log of technical bottlenecks and the resolutions implemented for the Aq
 - **Rationale:**
   - **Single Responsibility Principle (SRP):** A hardware driver class should purely manage the hardware (e.g., pulling a GPIO pin high/low). Handling user presentation, including console output formatting, violates SRP because it gives the class two reasons to change: 1) if the hardware swaps, or 2) if logging/UI needs alteration.
   - By routing messages through the `Logger` component, `PumpController` delegates the responsibility of formatting, routing, and thread-safety of logs back to a centralized utility designed for that purpose.
+
+---
+
+## Decision 12: Dependency Inversion for FillingController via Behavioral Interfaces
+
+- **Context:** `FillingController` previously depended on concrete classes (`GestureSensor`, `PumpController`, `FlowMeter`) to call behavior methods (`registerEventCallback`, `turnOn`, `getVolumeML`). This limited Open/Closed compliance at the orchestration layer.
+- **Decision:** **Introduce focused behavioral interfaces** in `include/`:
+  - `IProximitySensor`
+  - `IPump`
+  - `IFlowMeter`
+  and make `FillingController` depend on these abstractions only.
+- **Rationale:**
+  - This removes concrete driver coupling from high-level logic and improves OCP/DIP evidence for assessment.
+  - It keeps interface count minimal (no broad interface explosion), while still covering domain behavior needed by the state machine.
+  - We considered a template-based static polymorphism variant for zero virtual dispatch overhead, but chose runtime interfaces for maintainability and clearer design communication. At a 100 ms control period, virtual dispatch overhead is not operationally significant.

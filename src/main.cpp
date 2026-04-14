@@ -10,6 +10,10 @@
 
 #include <csignal>
 #include <signal.h>
+#include <chrono>
+#include <sstream>
+#include <iomanip>
+#include <thread>
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -51,7 +55,14 @@ int main() {
     Monitor monitor;
     controller.registerMonitor([&](const std::string& state, double vol, int bottles) {
         monitor.onStateChange(state, vol, bottles);
-        lcd.showStatus(state, vol, bottles);
+        lcd.print(0, state);
+        std::ostringstream row1;
+        if (state == "FILLING") {
+            row1 << "Vol: " << std::fixed << std::setprecision(1) << vol << " ml";
+        } else {
+            row1 << "Bottles: " << bottles;
+        }
+        lcd.print(1, row1.str());
     });
 
     Logger::info("=== AquaFlow Filling Machine Started ===");
@@ -68,7 +79,9 @@ int main() {
     loopTimer.registerCallback([&]() {
         controller.tick();
         // Real-time volume update on the LCD (reads atomic FlowMeter counter)
-        lcd.showVolume(flowMeter.getVolumeML());
+        std::ostringstream row;
+        row << "Vol: " << std::fixed << std::setprecision(1) << flowMeter.getVolumeML() << " ml";
+        lcd.print(1, row.str());
     });
     loopTimer.start();
 
@@ -87,7 +100,14 @@ int main() {
 
     // ── Shutdown (reverse init order) ────────────────────────────────────────
     loopTimer.stop();
+
+    // Display farewell message before shutting down LCD
+    lcd.clear();
+    lcd.print(0, "AquaFlow");
+    lcd.print(1, "Shutting down...");
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
     lcd.shutdown();
+
     flowMeter.shutdown();
     pump.shutdown();
     gestureSensor.shutdown();

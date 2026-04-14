@@ -4,11 +4,10 @@
 /**
  * @brief Abstract base interface for all hardware devices.
  *
- * Every hardware class (UltrasonicSensor, PumpController, FlowMeter)
+ * Every hardware device class (PumpController, FlowMeter, GestureSensor, LcdDisplay)
  * implements this interface. This supports:
  *   - Liskov Substitution (SOLID "L") — mock objects can replace real hardware
- *   - Dependency Inversion (SOLID "D") — FillingController depends on
- *     abstractions, not concrete GPIO classes
+ *   - A stable lifecycle contract (`init` / `shutdown`) shared across devices
  */
 class IHardwareDevice {
 public:

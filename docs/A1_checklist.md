@@ -10,9 +10,9 @@
 > Global variables, no SOLID evidence → D/E. No evidence at all → F.
 
 ### S - Single Responsibility Principle
-- [ ] **Every class has exactly ONE clearly-defined responsibility.** No "god classes" doing multiple jobs (e.g., a class that both reads the sensor AND controls the pump AND logs simultaneously).
-- [ ] **Confirm current classes are properly separated:** `GestureSensor`, `PumpController`, `FlowMeter`, `LcdDisplay`, `FillingController`, `Monitor`, `Timer`, `Logger` - each should own one concern only.
-- [ ] **Document in README/docs** which responsibility each class owns (justifies SRP compliance to the marker).
+- [x] **Every class has exactly ONE clearly-defined responsibility.** No "god classes" doing multiple jobs (e.g., a class that both reads the sensor AND controls the pump AND logs simultaneously).
+- [x] **Confirm current classes are properly separated:** `GestureSensor`, `PumpController`, `FlowMeter`, `LcdDisplay`, `FillingController`, `Monitor`, `Timer`, `Logger` - each should own one concern only.
+- [x] **Document in README/docs** which responsibility each class owns (justifies SRP compliance to the marker).
   - *Note: `PumpController`: logging via `Logger`; responsibility = pump GPIO control.*
 
 ### O - Open/Closed Principle
@@ -20,6 +20,7 @@
 - [ ] **Check `IHardwareDevice.h`** - does it provide a solid enough base that `FlowMeter`, `PumpController` etc. inherit from it without modifying the base?
 - [ ] **Use inheritance + virtual functions** to add functionality (e.g., a future `4-channel ADC` class extends a base `ADC` class).
 - [ ] **Document your inheritance hierarchy** - show it in a UML diagram.
+  - *Status note (2026-04-14): `IHardwareDevice` is used by `PumpController`, `FlowMeter`, `GestureSensor`, and `LcdDisplay`; behavioral interfaces (`IProximitySensor`, `IPump`, `IFlowMeter`) are now consumed by `FillingController`; UML diagram added in `docs/architecture.md`.*
 
 ### L - Liskov Substitution Principle
 - [ ] **Base class interfaces are future-proof.** If you swap a derived class for the base class, nothing breaks.
