@@ -1,7 +1,7 @@
 #include "state/FillingController.h"
+#include "utils/Logger.h"
 
-#include <iostream>
-#include <iomanip>
+#include <cstdio>  // snprintf — stack-allocated formatting, no heap
 
 using Clock = std::chrono::steady_clock;
 
@@ -23,17 +23,15 @@ FillingController::FillingController(GestureSensor& gestureSensor,
       monitorCallback_(nullptr)
 {
     // Register proximity callback on the GestureSensor.
-    // This lambda is called from the GestureSensor worker thread whenever
-    // proximity state changes.  It only writes to bottlePresent_ (atomic),
-    // so no mutex needed — the actual state-machine logic stays in tick().
+    // Called from the GestureSensor worker thread on proximity state change.
+    // Callback is intentionally minimal: release-store only — no I/O, no blocking.
+    // memory_order_release pairs with the acquire-load in tick() to ensure the
+    // stored value is visible to the Timer thread before it reads it.
     gestureSensor_.registerEventCallback([this](const GestureEvent& event) {
         if (event.state == ProximityState::PROXIMITY_TRIGGERED) {
-            bottlePresent_.store(true, std::memory_order_relaxed);
-            std::cout << "[GestureSensor] Proximity TRIGGERED (val="
-                      << event.proximityValue << ")\n";
+            bottlePresent_.store(true,  std::memory_order_release);
         } else if (event.state == ProximityState::PROXIMITY_CLEARED) {
-            bottlePresent_.store(false, std::memory_order_relaxed);
-            std::cout << "[GestureSensor] Proximity CLEARED\n";
+            bottlePresent_.store(false, std::memory_order_release);
         }
     });
 }
@@ -41,64 +39,57 @@ FillingController::FillingController(GestureSensor& gestureSensor,
 // ─────────────────────────────────────────────────────────────────────────────
 
 void FillingController::tick() {
-    std::cout << std::fixed << std::setprecision(2);
 
     switch (state_) {
 
     // ── WAITING: no cup detected yet ─────────────────────────────────────────
     case SystemState::WAITING: {
-        if (bottlePresent_.load(std::memory_order_relaxed)) {
-            // Proximity event fired — start hold timer
+        // acquire-load pairs with the release-store in the proximity callback
+        if (bottlePresent_.load(std::memory_order_acquire)) {
             holdStartTime_ = Clock::now();
             state_ = SystemState::CONFIRMATION;
-            std::cout << "Cup detected! Starting confirmation timer...\n";
+            Logger::info("Cup detected! Starting confirmation timer...");  // transition log
         }
         break;
     }
 
     // ── CONFIRMATION: cup must stay present for holdTimeSeconds_ ─────────────
     case SystemState::CONFIRMATION: {
-        if (!bottlePresent_.load(std::memory_order_relaxed)) {
+        if (!bottlePresent_.load(std::memory_order_acquire)) {
             // Cup removed before timer expired — reset
-            std::cout << "Cup removed before confirmation — resetting.\n";
+            Logger::info("Cup removed before confirmation - resetting.");   // transition log
             state_ = SystemState::WAITING;
             break;
         }
 
-        double elapsed = getHoldElapsed();
-        std::cout << std::setprecision(1)
-                  << "Confirming cup: " << elapsed
-                  << " / " << holdTimeSeconds_ << " s\n";
-
-        if (elapsed >= holdTimeSeconds_) {
+        if (getHoldElapsed() >= holdTimeSeconds_) {
             // Confirmed — reset meter and start pump
             flowMeter_.resetCount();
             pump_.turnOn();
             state_ = SystemState::FILLING;
-            std::cout << "Cup confirmed! Filling to "
-                      << std::setprecision(0) << targetVolumeML_ << " ml\n";
+            char buf[48];
+            snprintf(buf, sizeof(buf), "Cup confirmed! Filling to %d ml",
+                     static_cast<int>(targetVolumeML_));
+            Logger::info(buf);                                              // transition log
         }
+        // No per-tick log in CONFIRMATION — logs only on state transitions
         break;
     }
 
     // ── FILLING: pump running, counting flow pulses ───────────────────────────
     case SystemState::FILLING: {
-        double currentML = flowMeter_.getVolumeML();
-        int    pulses    = flowMeter_.getPulseCount();
-
-        std::cout << std::setprecision(1)
-                  << "Filling: " << currentML << " ml / "
-                  << targetVolumeML_ << " ml"
-                  << "  (" << pulses << " pulses)\n";
-
         if (flowMeter_.hasReachedTarget(targetVolumeML_)) {
+            double currentML = flowMeter_.getVolumeML();
             pump_.turnOff();
             bottleCount_++;
             state_ = SystemState::FILL_COMPLETE;
-            std::cout << std::setprecision(1)
-                      << "Target reached! Dispensed " << currentML << " ml. "
-                      << "Bottles filled: " << bottleCount_ << "\n";
+            char buf[64];
+            snprintf(buf, sizeof(buf),
+                     "Target reached! Dispensed %.1f ml. Bottles filled: %d",
+                     currentML, bottleCount_);
+            Logger::info(buf);                                              // transition log
         }
+        // No per-tick log in FILLING — volume visible via monitorCallback_ below
         break;
     }
 
@@ -106,12 +97,12 @@ void FillingController::tick() {
     case SystemState::FILL_COMPLETE: {
         flowMeter_.resetCount();
         state_ = SystemState::WAITING;
-        std::cout << "Fill complete. Waiting for next cup...\n";
+        Logger::info("Fill complete. Waiting for next cup...");             // transition log
         break;
     }
     }
 
-    // Notify any registered observer after every tick
+    // Notify observer (Monitor + LCD) after every tick — volume updates happen here
     if (monitorCallback_) {
         monitorCallback_(getStateName(), flowMeter_.getVolumeML(), bottleCount_);
     }
