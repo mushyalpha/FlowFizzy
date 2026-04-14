@@ -40,28 +40,8 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 # ── Unit test executable (GTest, no GPIO needed) ─────────────────────────────
-# [DELETED FILES] Commenting out broken targets
-# add_executable(filling_tests
-#     tests/FlowMeterTest.cpp
-#     tests/FillingControllerTest.cpp
-#     tests/PumpControllerTest.cpp
-#     src/state/FillingController.cpp
-#     src/monitor/Monitor.cpp
-#     src/utils/Timer.cpp
-#     src/utils/Logger.cpp
-# )
-# 
-# target_include_directories(filling_tests PRIVATE
-#     include
-#     src
-#     tests
-#     tests/mock_include
-# )
-# 
-# target_link_libraries(filling_tests GTest::gtest_main pthread)
-# 
-# include(GoogleTest)
-# gtest_discover_tests(filling_tests)
+# ── Unit test executable (GTest, no GPIO needed) ─────────────────────────────
+add_subdirectory(tests)
 
 # ── Standalone integration test (real hardware, uses main()) ─────────────────
 # add_executable(ultrasonic_integration_test

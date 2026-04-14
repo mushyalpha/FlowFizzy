@@ -13,13 +13,22 @@
  */
 class Logger {
 public:
-    /** @brief Log an informational message. */
+    /** 
+     * @brief Log an informational message. 
+     * @param msg The standard text content attached payload.
+     */
     static void info(const std::string& msg);
 
-    /** @brief Log a warning message. */
+    /** 
+     * @brief Log a warning message. 
+     * @param msg The warning string content formatting output.
+     */
     static void warn(const std::string& msg);
 
-    /** @brief Log an error message. */
+    /** 
+     * @brief Log an error message. 
+     * @param msg Descriptive context relating the source severity issue.
+     */
     static void error(const std::string& msg);
 
 private:

@@ -116,3 +116,14 @@ A master log of technical bottlenecks and the resolutions implemented for the Aq
 - **Rationale:**
   - **Single Responsibility Principle (SRP):** A hardware driver class should purely manage the hardware (e.g., pulling a GPIO pin high/low). Handling user presentation, including console output formatting, violates SRP because it gives the class two reasons to change: 1) if the hardware swaps, or 2) if logging/UI needs alteration.
   - By routing messages through the `Logger` component, `PumpController` delegates the responsibility of formatting, routing, and thread-safety of logs back to a centralized utility designed for that purpose.
+
+---
+
+## Decision 12: Architectural Principles & Multithreading (SOLID)
+
+- **Context:** Deciding the software constraints and architecture map mapping logic state to hardware feedback.
+- **Decision:** **Strictly enforce SOLID principles specifically Dependency Inversion (D), Liskov Substitution (L), and Open-Closed Principle (O) alongside an asynchronous event-driven layout.**
+- **Rationale & Applied Implementations:**
+  1. **Dependency Inversion + Liskov Substitution:** The state machine (`FillingController`) accesses hardware strictly through the abstract `IHardwareDevice` interfaces. This abstraction means we can freely swap real `PumpController` nodes with testing stub mocks dynamically without altering the controller's logic (Polymorphism).
+  2. **Open-Closed Principle:** Display outputs are decoupled entirely via asynchronous **Observer Callbacks**. Instead of hardcoding `LcdDisplay` into the root controller, the controller simply broadcasts events (`onStateChange`) via the generic `Monitor` callback structure. This allows UI layers to alter significantly (Open for extension) without ever touching core logic (Closed for modification).
+  3. **Event-Driven Threading Tradeoffs:** Rather than globally busy-polling GPIO ports (which uses 100% CPU latency overheads), `libgpiod` Edge Event workers and `sys/timerfd.h` were bound to isolate independent threads. The tradeoff is memory complexity with explicit thread execution tracking (`std::atomic<bool> pulseCount_`), but the system gains robust real-time sub-millisecond execution matching the stringent A1 criteria.

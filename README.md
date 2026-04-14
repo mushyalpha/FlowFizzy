@@ -1,10 +1,17 @@
 # AquaFlow Water Dispenser
 
+![AquaFlow Logo](images/aquaflow_logo.png)
+
 AquaFlow is a smart, fully-automated touchless water dispenser built on the Raspberry Pi using C++. It utilizes intelligent hardware monitoring to safely dispense exact volumes of water using proximity detection.
+
+### 🎥 [Watch the End-to-End Demo on YouTube](#) <!-- TODO: Add YT Link -->
+### 📖 [Read our Project Tech Write-up on RS Design Spark](#) <!-- TODO: Add Blog Link -->
 
 ## 🛠️ Hardware Connections (Raspberry Pi Pinout)
 
-Below is the definitive hardware wiring guide to connect the sensors and pump to the Raspberry Pi.
+Below is the definitive hardware wiring guide to connect the sensors and pump to the Raspberry Pi. For a visual representation, please refer to our physical circuit diagram:
+![Hardware Wiring Diagram](physical_layout.png)
+
 > **Note:** Always ensure the Raspberry Pi is powered OFF when altering hardware connections. 
 
 ### 1. Gesture/Proximity Sensor (DollaTek APDS-9960)
@@ -36,7 +43,7 @@ Driven via a Darlington TIP122 with a flyback diode.
 
 ## 🏗️ System Architecture
 
-The system follows a strict event-driven, non-blocking architecture using `timerfd` and `libgpiod` interrupts.
+The system follows a strict event-driven, non-blocking architecture using `timerfd` and `libgpiod` interrupts. For full class and sequence diagrams, see our detailed [Architecture Documentation](docs/architecture.md).
 
 ```mermaid
 graph TD
@@ -82,31 +89,42 @@ graph TD
 
 ## 🚀 Build & Run Instructions
 
-### Prerequisites
+### 1. Fresh Raspberry Pi Installation
+If you are starting from a completely blank Raspberry Pi OS (Bookworm or newer), follow these steps:
+1. **Flash OS:** Flash Raspberry Pi OS (64-bit recommended) onto a MicroSD card using Raspberry Pi Imager. Ensure SSH and Wi-Fi are configured.
+2. **Boot & Connect:** Insert the SD card, boot the Pi, and SSH into it.
+3. **Enable I2C:** Run `sudo raspi-config` -> `Interfacing Options` -> `I2C` -> Enable.
+4. **Clone the Repo:** `git clone https://github.com/mushyalpha/AquaFlow.git && cd AquaFlow`
+
+### 2. Prerequisites
+Run the following exactly as listed to install C++ compilers, CMake, and the standard GPIO driver library:
 ```bash
 sudo apt-get update
 sudo apt-get install -y cmake g++ libgpiod-dev libgpiod-doc
 ```
 
-### Installation
+### 3. Build Instructions
 ```bash
 mkdir build && cd build
 cmake ..
 make -j$(nproc)
 ```
 
-### Running Tests
+### 4. Running Tests
+You can automatically run all unit tests from the `build` directory:
 ```bash
-# Run unit tests
+# Run Google Test unit tests
 make test
+# OR manually run ctest to view verbose outputs:
+ctest -V
 
-# Run hardware integration test
+# (Optional) Run hardware integration testing binaries:
 sudo ./hardware_trio_test
 ```
 
-### Running the Application
+### 5. Running the Application
 ```bash
-sudo ./AquaFlowApp
+sudo ./filling_machine
 ```
 
 ---

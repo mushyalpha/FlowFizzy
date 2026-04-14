@@ -24,24 +24,54 @@ enum class GestureDir {
     RIGHT
 };
 
+/**
+ * @brief Struct to hold gesture and proximity event data delivered to observers.
+ */
 struct GestureEvent {
-    ProximityState state;
-    GestureDir direction;
-    int proximityValue;
+    ProximityState state;          ///< State indicating if cup is triggered or cleared
+    GestureDir direction;          ///< Enumerated gesture direction detected
+    int proximityValue;            ///< Raw 8-bit analog proximity reading
 };
 
 class GestureSensor : public IHardwareDevice {
 public:
+    /**
+     * @brief Signature for successful gesture/proximity events.
+     * @param event The populated GestureEvent instance to process.
+     */
     using EventCallback = std::function<void(const GestureEvent&)>;
+
+    /**
+     * @brief Signature for error and system breakdown callbacks.
+     * @param errorMsg The explicit string defining the failure.
+     */
     using ErrorCallback = std::function<void(const std::string&)>;
 
+    /**
+     * @brief Initializes the APDS-9960 sensor via I2C interface.
+     * @param i2cBus The I2C bus channel integer (e.g. 1 for /dev/i2c-1).
+     * @param i2cAddr The hex pointer mapping to the sensor logic.
+     * @param threshold Minimum analog reading to trigger proximity (0-255).
+     */
     GestureSensor(int i2cBus = 1, int i2cAddr = 0x39, int threshold = 40);
     ~GestureSensor() override;
 
+    /** @brief Allocates timerfd and launches worker I2C-polling thread. */
     bool init() override;
+
+    /** @brief Reaps polling thread and safely closes mapped file descriptors. */
     void shutdown() override;
 
+    /**
+     * @brief Sets primary handler for reacting to external proximity events.
+     * @param cb Stored event callback, executes immediately inline.
+     */
     void registerEventCallback(EventCallback cb);
+
+    /**
+     * @brief Sets fallback handler reacting to kernel I2C exceptions.
+     * @param cb Stored error execution function string log.
+     */
     void registerErrorCallback(ErrorCallback cb);
 
 private:

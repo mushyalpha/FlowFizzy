@@ -24,9 +24,17 @@ class Timer {
 public:
     using TimerCallback = std::function<void()>;
 
+    /**
+     * @brief Construct an executing context locking the duration intervals.
+     * @param intervalMs The repeating cycle time bounded in milliseconds integer.
+     */
     explicit Timer(int intervalMs) : intervalMs_(intervalMs) {}
     ~Timer() { stop(); }
 
+    /**
+     * @brief Maps observer executing block fired continuously upon tick timeout.
+     * @param cb Std-functional wrapping the void worker execution cycle payload.
+     */
     void registerCallback(TimerCallback cb) { callback_ = std::move(cb); }
 
     /** @brief Create timerfd and launch worker thread. */
