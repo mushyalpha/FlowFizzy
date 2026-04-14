@@ -129,7 +129,7 @@ int main() {
                       << std::flush;
 
             // Stop when we hit the dynamically selected size
-            if (flow.hasReachedTarget((double)activeTargetVolume)) {
+            if (flow.getVolumeML() >= static_cast<double>(activeTargetVolume)) {
                 std::cout << "\n\n*** TARGET " << activeTargetVolume << "ml REACHED! ***\n";
                 pump.turnOff();
                 appState = AppState::DONE;
