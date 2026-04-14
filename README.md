@@ -2,7 +2,7 @@
 
 AquaFlow is a smart, fully-automated touchless water dispenser built on the Raspberry Pi using C++. It utilizes intelligent hardware monitoring to safely dispense exact volumes of water using proximity detection.
 
-## 🛠️ Hardware Connections (Raspberry Pi Pinout)
+## Hardware Connections (Raspberry Pi Pinout)
 
 Below is the definitive hardware wiring guide to connect the sensors and pump to the Raspberry Pi.
 > **Note:** Always ensure the Raspberry Pi is powered OFF when altering hardware connections. 
@@ -15,101 +15,55 @@ This acts as the touchless cup detector. It communicates via the I2C protocol na
 | **GND** | **Pin 6 (GND)** | Ground |
 | **SDA** | **Pin 3 (GPIO 2)** | I2C Data Line |
 | **SCL** | **Pin 5 (GPIO 3)** | I2C Clock Line |
-| **VL** | **Pin 17 (3.3V)** | Powers the IR LED for proximity |
+| **VL** | **Pin 17 (3.3V)** (or solder to VCC) | Powers the IR LED for proximity |
 
 ### 2. Water Flow Sensor (YF-S401)
-Sends digital pulses to precisely measure volume.
+This sensor spins as water traverses it, sending digital pulses to precisely measure volume.
 | Sensor Wire Color | Raspberry Pi Pin | Function |
 | :--- | :--- | :--- |
 | **Red** | **Pin 2 (5V)** | Power |
 | **Black** | **Pin 9 (GND)** | Ground |
-| **Yellow** | **Pin 11 (GPIO 17)** | Pulse Signal Line |
+| **Yellow** | **Pin 11 (GPIO 17)** | Pulse Signal Line (Open Collector) |
 
 ### 3. DC Submersible Pump (JT80SL via TIP122 Transistor)
-Driven via a Darlington TIP122 with a flyback diode.
-- **Base**: GPIO 18 (via 1k resistor)
-- **Collector**: Pump Negative (-)
-- **Emitter**: Ground (GND)
-- **Diode**: Across Pump (+) and Collector.
+Because the pump draws more current than the Pi can provide, it must be driven via a transistor circuit (using the Darlington TIP122) and protected by a flyback diode. 
 
----
+Here is the exact breadboard wiring layout:
 
-## 🏗️ System Architecture
+*   **TIP122 Base (Pin 1 - connected at 11a):**
+    *   One end of a **1k resistor** connects to `11c`.
+    *   The other end of the resistor connects to `19f`.
+    *   A wire from `19g` connects directly to **GPIO 18** on the Raspberry Pi.
+*   **TIP122 Collector (Pin 2 - connected at 12a):**
+    *   The pump's **black wire** connects to `12e`.
+    *   The flyback diode's **non-striped side** connects to `12c`.
+*   **Power Rail (Positive voltage - Row 6):**
+    *   The pump's **red wire** connects to `6e`.
+    *   The **5V supply wire** (from Pi or **External Powerbank Positive**) connects to `6d`.
+    *   The flyback diode's **silver-striped side** connects to `6c`.
+*   **TIP122 Emitter (Pin 3 - connected at 13a):**
+    *   A wire runs from `13e` directly to a **Ground (GND)** pin on the Raspberry Pi.
+    *   **⚡ CRITICAL:** If using an external powerbank, you MUST also connect the **Powerbank Ground (Negative) to the Pi's Ground**. Without this "common ground", the transistor circuit will not switch and the Pi could be damaged!
 
-The system follows a strict event-driven, non-blocking architecture using `timerfd` and `libgpiod` interrupts.
+*(Note: The diode placed backwards between the Collector and the Power rail acts as a flyback diode. This prevents high-voltage "kickback" spikes from destroying the Raspberry Pi when the pump motor abruptly turns off).*
 
-```mermaid
-graph TD
-    A[Timer Worker] -->|timerfd 100ms| B[FillingController::tick]
-    C[Gesture Worker] -->|timerfd 50ms| B
-    D[Flow Worker] -->|GPIO Interrupt| E[Atomic Pulse Count]
-    B -->|Atomic Read| E
-    B -->|GPIO Write| F[Pump Controller]
-    B -->|Callback| G[LCD Display]
-```
-
-### ⏱️ Real-Time Timing Requirements
-| Requirement | Value | Mechanism |
+### 4. LCD Display (Optional I2C Backpack)
+If utilizing the I2C LCD to display volume and status, you can safely share the I2C pins with the Gesture Sensor because they have different I2C addresses.
+| LCD Pin | Raspberry Pi Pin | Function |
 | :--- | :--- | :--- |
-| Gesture Poll Interval | 50 ms | `timerfd` (blocking) |
-| State Machine Tick | 100 ms | `timerfd` (blocking) |
-| Flow Interrupt Latency | < 1 ms | `libgpiod` Edge Events |
-| Emergency Stop | < 150 ms | Proximity CLEARED → Pump OFF |
+| **VDD** | **Pin 2 or 4 (5V)** | Power |
+| **GND** | **GND** | Ground |
+| **SDA** | **Pin 3 / GPIO 2** | Shared I2C Data Line |
+| **SCL** | **Pin 5 / GPIO 3** | Shared I2C Clock Line |
 
----
+## Build Instructions (Linux / RPi)
 
-## 👥 Division of Labor
-| Team Member | Primary Responsibilities |
-| :--- | :--- |
-| **Abdullah Alkabbawi** | Real-Time Architecture, State Machine Logic, Hardware Integration, Multithreading. |
-| **Mushyalpha** | Hardware Specifications, Documentation (ADRs), CAD Design, Integration Testing. |
+Make sure you have CMake and the C++ compilation tools installed. The project relies on `libgpiodcxx` for secure, race-free GPIO management.
 
----
-
-## 💰 Bill of Materials (BoM)
-| Item | Cost |
-| :--- | :--- |
-| DollaTek APDS-9960 Gesture Sensor | £4.99 |
-| YF-S401 Water Flow Sensor | £7.45 |
-| JT80SL DC Submersible Pump | £5.20 |
-| TIP122 Transistor + Diode + Resistor Kit | £2.50 |
-| 16x2 I2C LCD Display | £6.10 |
-| Breadboard & Jumper Wires | £3.50 |
-| Silicone Tubing (1m) | £2.00 |
-| **TOTAL** | **£31.74 (Target: < £75)** |
-
----
-
-## 🚀 Build & Run Instructions
-
-### Prerequisites
 ```bash
-sudo apt-get update
-sudo apt-get install -y cmake g++ libgpiod-dev libgpiod-doc
-```
-
-### Installation
-```bash
-mkdir build && cd build
+mkdir build
+cd build
 cmake ..
-make -j$(nproc)
-```
-
-### Running Tests
-```bash
-# Run unit tests
-make test
-
-# Run hardware integration test
+make hardware_trio_test
 sudo ./hardware_trio_test
 ```
-
-### Running the Application
-```bash
-sudo ./AquaFlowApp
-```
-
----
-
-## 📜 Licensing
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
