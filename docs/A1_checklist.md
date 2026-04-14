@@ -28,6 +28,16 @@
 - [x] **Check `IHardwareDevice.h`** - if it declares a `getData()` callback with a fixed return type, verify the derived classes don't break substitutability.
 - [x] **Document in code comments/docs** your reasoning on Liskov compliance or why you consciously relaxed it.
   - *Status note (2026-04-15): `IHardwareDevice` is lifecycle-only by design (no fixed `getData()`), `GestureEvent` carries both scalar and vector payloads for backward compatibility + multi-channel extension, and `lsp_stress_test` (`tests/LiskovSubstitutionStressTest.cpp`) validates substitution across lifecycle, callbacks, and `FillingController` orchestration.*
+### I - Interface Segregation Principle
+- [x] **No bloated interfaces.** Each class/callback interface exposes ONLY what the consumer needs - not a massive omnibus interface.
+- [x] **Sensor-specific callbacks are separate** - e.g., a flow reading callback is distinct from a gesture event callback; they're not crammed into one generic handler.
+- [x] **Verify** that no single class is being used as a catch-all for unrelated data.
+
+### D - Dependency Inversion Principle
+- [x] **Decision documented:** Professor explicitly said DIP is hard in C++ and is optional - but your **choice must be documented** (in README/docs) explaining why you did or didn't apply it.
+- [x] **(Optional, high marks):** If attempting DIP, use C++ templates to decouple high-level logic from low-level hardware drivers so either can be swapped independently. *(Note: Achieved via runtime interfaces instead of templates, documented ADR).*
+- [x] **At minimum:** ensure high-level modules (`FillingController`) depend on **abstractions** (`IHardwareDevice` / `IPump`), not concrete classes directly.
+
 ---
 
 ## 2. Encapsulation
@@ -35,7 +45,8 @@
 > Professor: *"A = clearly defined public interface, all variables in private, access only via getters/setters/callbacks, efficient internal data structures."*
 > Global variables → D/E instantly. Everything dumped in `main` → F.
 
-- [ ] **Zero global variables.** Do a full search across all `.cpp` and `.h` files. Any global mutable state is an immediate D/E.
+- [x] **Zero global variables.** Do a full search across all `.cpp` and `.h` files. Any global mutable state is an immediate D/E.
+  - *Status note (2026-04-15): Full `.cpp`/`.h` audit completed. Removed mutable namespace-scope state (`Logger::mutex_` static storage and `keepRunning` globals in integration tests). Remaining `static` uses are immutable constants (`constexpr`/`const`) or static methods only.*
 - [ ] **All member variables are `private`** (or `protected` where justified). No `public` data members.
 - [ ] **All data access is through getters, setters, or callbacks only.** No direct member access from outside the class.
 - [ ] **Internal data structures are efficient** - e.g., consider using `std::atomic` for shared sensor readings, ring buffers or double-buffering for high-frequency data.
