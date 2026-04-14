@@ -143,3 +143,10 @@ double FillingController::getTargetVolumeML() const {
 int FillingController::getBottleCount() const {
     return bottleCount_;
 }
+
+#ifdef AQUAFLOW_TESTING
+void FillingController::forceHoldElapsedForTest(double secondsElapsed) {
+    holdStartTime_ = Clock::now() - std::chrono::duration_cast<Clock::duration>(
+        std::chrono::duration<double>(secondsElapsed));
+}
+#endif

@@ -1,4 +1,5 @@
 #include "hardware/LcdDisplay.h"
+#include "utils/Logger.h"
 
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
@@ -8,7 +9,6 @@
 #include <chrono>
 #include <cstring>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <thread>
@@ -77,12 +77,14 @@ bool LcdDisplay::init() {
         backlightOn_ = true;
         initialised_ = true;
 
-        std::cout << "LcdDisplay initialised (bus=" << busNo_
-                  << ", addr=0x" << std::hex << addr_ << std::dec << ")\n";
+        std::ostringstream log;
+        log << "LcdDisplay initialised (bus=" << busNo_
+            << ", addr=0x" << std::hex << addr_ << std::dec << ")";
+        Logger::info(log.str());
         return true;
 
     } catch (const std::exception& e) {
-        std::cerr << "LcdDisplay::init() error: " << e.what() << "\n";
+        Logger::error("LcdDisplay::init() error: " + std::string(e.what()));
         if (fd_ >= 0) { close(fd_); fd_ = -1; }
         return false;
     }
@@ -104,7 +106,7 @@ void LcdDisplay::shutdown() {
     fd_          = -1;
     initialised_ = false;
 
-    std::cout << "LcdDisplay shut down.\n";
+    Logger::info("LcdDisplay shut down.");
 }
 
 // ── Display API ───────────────────────────────────────────────────────────────

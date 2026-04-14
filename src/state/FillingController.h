@@ -87,6 +87,11 @@ public:
     /** @brief Get the total number of bottles filled this session. */
     int getBottleCount() const;
 
+#ifdef AQUAFLOW_TESTING
+    /** @brief Test seam for unit tests to fast-forward confirmation timing. */
+    void forceHoldElapsedForTest(double secondsElapsed);
+#endif
+
 private:
     // Hardware references
     GestureSensor& gestureSensor_;

@@ -34,3 +34,62 @@ A chronological log of work done in the lab, daily goals, and simple tasks.
 **Notes & Observations:**
 - The wires we use are quite short and in some cases the connections are weak.
 - Right now this is no big deal because we are testing our connections separately, but this will become important when we are bringing the product together.
+
+---
+
+## 14 April 2026
+**Time:** 17:31
+**Location:** Local workspace / Codex review pass
+
+**Goals:**
+- Improve the code in ways that are directly supported by the RTES course material.
+- Strengthen encapsulation and unit-testing quality without weakening the event-driven runtime design.
+- Bring hardware-driver logging into line with the documented SRP decisions.
+
+**Tasks Completed:**
+- [x] Removed `#define private public` from the unit tests.
+- [x] Added test-only seams behind `AQUAFLOW_TESTING` so tests can inject safe synthetic state without touching private members.
+- [x] Reworked `FlowMeterTest`, `FillingControllerTest`, and `PumpControllerTest` to avoid real hardware initialisation.
+- [x] Removed the real-time `sleep_for()` delay from `FillingControllerTest`.
+- [x] Routed remaining hardware-driver console output through `Logger`.
+- [x] Added null-safe handling in `PumpController` so unit-test simulation mode does not dereference a missing GPIO request.
+- [x] Enabled `AQUAFLOW_TESTING` only for the `filling_tests` target in CMake.
+
+**Notes & Rationale:**
+- The main driver for these changes was the course requirement around **encapsulation**. The checklist says top-band work should expose a clear public interface with data accessed through getters, setters, or callbacks only. Our previous tests were violating this by redefining `private` as `public` and directly mutating internal fields like `pulseCount_` and `eventCallback_`.
+- To fix this without weakening the production design, we added **test-only seams** guarded by `#ifdef AQUAFLOW_TESTING`. This means the real application binary keeps its original encapsulation, while the unit tests get small, explicit hooks for simulation.
+- `FlowMeter` now has `injectPulseCountForTest(int)` so the test can verify volume calculations and target detection without touching private atomics directly.
+- `GestureSensor` now has `emitEventForTest(const GestureEvent&)` so the controller tests can simulate proximity events through a method instead of reaching into the stored callback function.
+- `FillingController` now has `forceHoldElapsedForTest(double)` so we can fast-forward the confirmation phase in tests without sleeping for 2.1 seconds. This makes the tests deterministic and avoids time-based flakiness.
+- `PumpController` now has `enableSimulationForTest()` so the pump tests can check logical ON/OFF behaviour without requiring `/dev/gpiochip...` to exist. We also wrapped `request_->set_value(...)` in null checks so simulation mode is safe.
+- These changes are course-backed because the marking material explicitly values **unit testing**, **encapsulation**, and **safe data access**, and our previous tests were undermining that story even though the production architecture was strong.
+
+**Logger / SRP Cleanup:**
+- `GestureSensor.cpp` was still using `std::cerr` directly for the unknown APDS-9960 device ID warning.
+- `LcdDisplay.cpp` was still using `std::cout` / `std::cerr` directly for init/shutdown messages.
+- We replaced those direct console writes with `Logger::warn`, `Logger::info`, and `Logger::error` so the hardware drivers remain focused on hardware responsibilities only.
+- This matches the ADR decision that hardware-driver output should be routed through `Logger` to better respect **Single Responsibility Principle (SRP)** and keep console formatting/thread-safe output centralized.
+
+**Files Changed:**
+- `src/hardware/FlowMeter.h`
+- `src/hardware/FlowMeter.cpp`
+- `src/hardware/GestureSensor.h`
+- `src/hardware/GestureSensor.cpp`
+- `src/hardware/LcdDisplay.cpp`
+- `src/hardware/PumpController.h`
+- `src/hardware/PumpController.cpp`
+- `src/state/FillingController.h`
+- `src/state/FillingController.cpp`
+- `tests/FlowMeterTest.cpp`
+- `tests/FillingControllerTest.cpp`
+- `tests/PumpControllerTest.cpp`
+- `tests/CMakeLists.txt`
+
+**Outcome:**
+- The runtime architecture is still event-driven: `FlowMeter` still waits on GPIO edge events and `GestureSensor` still uses timerfd-based blocking behavior.
+- The unit tests are now much closer to true unit tests instead of semi-integration tests.
+- The project documentation and the actual code are now more consistent with each other, especially around encapsulation, SRP, and testability.
+
+**Limitations / Follow-up:**
+- I could not run `cmake` in the current shell because `cmake` was not installed or not available on `PATH`, so the build/test pass still needs to be verified in a configured development environment.
+- A sensible next improvement would be to harden `GestureSensor::init()` so failure paths are more transactional and leave the object in a cleaner state if setup fails partway through.

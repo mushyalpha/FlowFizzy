@@ -14,6 +14,8 @@ add_executable(filling_tests
     ../src/utils/Logger.cpp
 )
 
+target_compile_definitions(filling_tests PRIVATE AQUAFLOW_TESTING)
+
 target_include_directories(filling_tests PRIVATE
     ../include
     ../src

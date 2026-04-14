@@ -1,11 +1,11 @@
 #include "hardware/GestureSensor.h"
+#include "utils/Logger.h"
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <sys/timerfd.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
-#include <iostream>
 #include <cmath>
 #include <stdexcept>
 
@@ -52,7 +52,7 @@ bool GestureSensor::init() {
 
         uint8_t id = readRegister(APDS9960_ID);
         if (id != BRAND_ID_ADAFRUIT_1 && id != BRAND_ID_ADAFRUIT_2 && id != BRAND_ID_DOLLATEK) {
-            std::cerr << "Warning: Unknown APDS9960 device ID: 0x" << std::hex << (int)id << std::dec << "\n";
+            Logger::warn("Unknown APDS9960 device ID: " + std::to_string(static_cast<int>(id)));
         }
 
         // Configure Gesture Engine
@@ -127,6 +127,14 @@ void GestureSensor::registerEventCallback(EventCallback cb) {
 void GestureSensor::registerErrorCallback(ErrorCallback cb) {
     errorCallback_ = std::move(cb);
 }
+
+#ifdef AQUAFLOW_TESTING
+void GestureSensor::emitEventForTest(const GestureEvent& event) const {
+    if (eventCallback_) {
+        eventCallback_(event);
+    }
+}
+#endif
 
 void GestureSensor::worker() {
     bool isTriggered = false;

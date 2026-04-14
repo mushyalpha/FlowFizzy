@@ -6,9 +6,6 @@
 #include <atomic>
 #include <string>
 #include <cstdint>
-#include <cstdint>  // uint8_t
-// timerfd_create / timerfd_settime (replaces sleep-based polling)
-#include <sys/timerfd.h>
 
 enum class ProximityState {
     NONE,
@@ -73,6 +70,11 @@ public:
      * @param cb Stored error execution function string log.
      */
     void registerErrorCallback(ErrorCallback cb);
+
+#ifdef AQUAFLOW_TESTING
+    /** @brief Test seam for unit tests to inject a synthetic event. */
+    void emitEventForTest(const GestureEvent& event) const;
+#endif
 
 private:
     void worker();

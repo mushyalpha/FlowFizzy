@@ -61,6 +61,11 @@ public:
     /** @brief True when accumulated volume >= targetVolumeML. */
     bool hasReachedTarget(double targetVolumeML) const;
 
+#ifdef AQUAFLOW_TESTING
+    /** @brief Test seam for unit tests to inject a synthetic pulse count. */
+    void injectPulseCountForTest(int pulseCount);
+#endif
+
 private:
     void setupGpio();
 
