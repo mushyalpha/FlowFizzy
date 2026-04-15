@@ -21,12 +21,11 @@ bool FlowMeter::init() {
 }
 
 void FlowMeter::shutdown() {
-    if (!running_) return;
     running_ = false;
     if (edgeThread_.joinable()) edgeThread_.join();
-    // Release libgpiod resources
-    request_.reset();
-    chip_.reset();
+    // Release libgpiod resources safely regardless of internal failure state
+    if (request_) request_.reset();
+    if (chip_) chip_.reset();
 }
 
 // ── Flow data API ─────────────────────────────────────────────────────────────

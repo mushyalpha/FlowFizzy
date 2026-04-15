@@ -91,12 +91,12 @@ bool LcdDisplay::init() {
 }
 
 void LcdDisplay::shutdown() {
-    if (!initialised_) return;
-
     try {
-        // Turn off the backlight
-        backlightOn_ = false;
-        expanderWrite(0x00);   // all bits low → backlight off
+        if (initialised_) {
+            // Turn off the backlight if it is still functionally connected
+            backlightOn_ = false;
+            expanderWrite(0x00);
+        }
     } catch (const std::exception& e) {
         Logger::warn("LcdDisplay shutdown error swallowed: " + std::string(e.what()));
     }
