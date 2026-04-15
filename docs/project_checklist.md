@@ -57,7 +57,8 @@
   - *Status note (2026-04-15): Extracted all timer wiring, display rendering, and shutdown orchestration into a dedicated `AquaFlowApp` class. `main.cpp` now strictly executes dependency injection and blocks passively.*
 - [x] **All callbacks are transmitted through `std::function` or abstract interface** - not via raw global function pointers.
   - *Status note (2026-04-15): Audit complete. EventCallback, TimerCallback, and MonitorCallback implementations strictly utilise std::function for observer transmission.*
-- [ ] **Safe data receiving and releasing** - verify fault-checking mechanisms are in place when sensors disconnect or provide erroneous data.
+- [x] **Safe data receiving and releasing** - verify fault-checking mechanisms are in place when sensors disconnect or provide erroneous data.
+  - *Status note (2026-04-15): Guarded all detached hardware threads and public APIs against transport layer exceptions. Handled initialisation race conditions and prevented application crashes on bus detachments.*
 
 ---
 

@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "utils/Logger.h"
+
 // ── IHardwareDevice ───────────────────────────────────────────────────────────
 
 bool FlowMeter::init() {
@@ -68,32 +70,37 @@ void FlowMeter::edgeWorker() {
     // Initialise to epoch so the very first real pulse is always accepted
     lastPulseTime_ = std::chrono::steady_clock::time_point{};
 
-    while (running_) {
-        // Blocking wait - thread sleeps until a pulse arrives or 200 ms timeout
-        if (request_->wait_edge_events(std::chrono::milliseconds(200))) {
-            gpiod::edge_event_buffer buffer(8);
-            std::size_t num = request_->read_edge_events(buffer);
+    try {
+        while (running_) {
+            // Blocking wait - thread sleeps until a pulse arrives or 200 ms timeout
+            if (request_->wait_edge_events(std::chrono::milliseconds(200))) {
+                gpiod::edge_event_buffer buffer(8);
+                std::size_t num = request_->read_edge_events(buffer);
 
-            for (std::size_t i = 0; i < num; ++i) {
-                if (buffer.get_event(i).type() ==
-                    gpiod::edge_event::event_type::FALLING_EDGE) {
+                for (std::size_t i = 0; i < num; ++i) {
+                    if (buffer.get_event(i).type() ==
+                        gpiod::edge_event::event_type::FALLING_EDGE) {
 
-                    auto now = std::chrono::steady_clock::now();
-                    auto gap = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                   now - lastPulseTime_).count();
+                        auto now = std::chrono::steady_clock::now();
+                        auto gap = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                       now - lastPulseTime_).count();
 
-                    // ignore any two pulses that arrive too quickly
-                    // Real water flow from the sensor produces pulses about every 10 ms
-                    // electrical noise shows up much faster like in microseconds.
-                    // So if the gap between pulses is at least DEBOUNCE_MS (5 ms)
-                    // we count it but if its less than that we treat it as noise and skip it.
-                    if (gap >= DEBOUNCE_MS) {
-                        pulseCount_++;
-                        lastPulseTime_ = now;
+                        // ignore any two pulses that arrive too quickly
+                        // Real water flow from the sensor produces pulses about every 10 ms
+                        // electrical noise shows up much faster like in microseconds.
+                        // So if the gap between pulses is at least DEBOUNCE_MS (5 ms)
+                        // we count it but if its less than that we treat it as noise and skip it.
+                        if (gap >= DEBOUNCE_MS) {
+                            pulseCount_++;
+                            lastPulseTime_ = now;
+                        }
                     }
                 }
             }
         }
+    } catch (const std::exception& e) {
+        Logger::error("FlowMeter hardware fault (thread aborted): " + std::string(e.what()));
+        running_ = false;
     }
 }
 

@@ -71,8 +71,6 @@ bool GestureSensor::init() {
         // GEN + PEN + PON = 0x45
         writeRegister(APDS9960_ENABLE, 0x45);
 
-        running_ = true;
-
         // ── RTES: timerfd-driven I2C sampling ──────────────────────────────────
         // The APDS-9960 INT pin is not wired; instead a timerfd fires every
         // POLL_INTERVAL_MS. The worker thread blocks on ::read(timerFd_) — a
@@ -90,10 +88,16 @@ bool GestureSensor::init() {
         if (timerfd_settime(timerFd_, 0, &its, nullptr) < 0)
             throw std::runtime_error("GestureSensor: timerfd_settime failed");
 
+        running_ = true;
         workerThread_ = std::thread(&GestureSensor::worker, this);
         return true;
     } catch (const std::exception& e) {
         if (errorCallback_) errorCallback_(e.what());
+        running_ = false;
+        if (timerFd_ >= 0) {
+            close(timerFd_);
+            timerFd_ = -1;
+        }
         if (fd_ >= 0) {
             close(fd_);
             fd_ = -1;
@@ -117,8 +121,12 @@ void GestureSensor::shutdown() {
     }
 
     if (fd_ >= 0) {
-        // Power off
-        writeRegister(APDS9960_ENABLE, 0x00);
+        try {
+            // Power off safely without propagating exceptions from destruction
+            writeRegister(APDS9960_ENABLE, 0x00);
+        } catch (const std::exception& e) {
+            Logger::error("GestureSensor shutdown exception swallowed: " + std::string(e.what()));
+        }
         close(fd_);
         fd_ = -1;
     }

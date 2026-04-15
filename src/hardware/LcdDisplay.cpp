@@ -93,12 +93,18 @@ bool LcdDisplay::init() {
 void LcdDisplay::shutdown() {
     if (!initialised_) return;
 
-    // Turn off the backlight
-    backlightOn_ = false;
-    expanderWrite(0x00);   // all bits low → backlight off
+    try {
+        // Turn off the backlight
+        backlightOn_ = false;
+        expanderWrite(0x00);   // all bits low → backlight off
+    } catch (const std::exception& e) {
+        Logger::warn("LcdDisplay shutdown error swallowed: " + std::string(e.what()));
+    }
 
-    close(fd_);
-    fd_          = -1;
+    if (fd_ >= 0) {
+        close(fd_);
+        fd_ = -1;
+    }
     initialised_ = false;
 
     Logger::info("LcdDisplay shut down.");
@@ -108,21 +114,31 @@ void LcdDisplay::shutdown() {
 
 void LcdDisplay::clear() {
     if (!initialised_) return;
-    writeCommand(LCD_CLEARDISPLAY);
-    delayMs(2);
+    try {
+        writeCommand(LCD_CLEARDISPLAY);
+        delayMs(2);
+    } catch (const std::exception& e) {
+        Logger::error("LcdDisplay transport fault (clear): " + std::string(e.what()));
+        initialised_ = false;
+    }
 }
 
 void LcdDisplay::print(int row, const std::string& text) {
     if (!initialised_) return;
 
-    // Pad or truncate to exactly 16 characters — overwrites previous content
-    // on that row without a full clear (no flicker)
-    std::string line = text;
-    line.resize(16, ' ');
+    try {
+        // Pad or truncate to exactly 16 characters — overwrites previous content
+        // on that row without a full clear (no flicker)
+        std::string line = text;
+        line.resize(16, ' ');
 
-    setCursor(row, 0);
-    for (char c : line)
-        writeData(static_cast<uint8_t>(c));
+        setCursor(row, 0);
+        for (char c : line)
+            writeData(static_cast<uint8_t>(c));
+    } catch (const std::exception& e) {
+        Logger::error("LcdDisplay transport fault (print): " + std::string(e.what()));
+        initialised_ = false;
+    }
 }
 
 // ── HD44780 low-level helpers ─────────────────────────────────────────────────
@@ -159,7 +175,9 @@ void LcdDisplay::pulseEnable(uint8_t data) {
 void LcdDisplay::expanderWrite(uint8_t data) {
     // OR in the backlight bit before sending to PCF8574T
     uint8_t byte = data | (backlightOn_ ? BACKLIGHT : NOBACKLIGHT);
-    ::write(fd_, &byte, 1);
+    if (::write(fd_, &byte, 1) != 1) {
+        throw std::runtime_error("I2C expander write failed");
+    }
 }
 
 
