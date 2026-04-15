@@ -1,5 +1,6 @@
 #include "hardware/LcdDisplay.h"
 
+#include <array>
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
@@ -145,7 +146,7 @@ void LcdDisplay::print(int row, const std::string& text) {
 
 void LcdDisplay::setCursor(int row, int col) {
     // DDRAM addresses: row 0 starts at 0x00, row 1 starts at 0x40
-    static const uint8_t rowOffsets[] = { 0x00, 0x40 };
+    static constexpr std::array<uint8_t, 2> rowOffsets = { 0x00, 0x40 };
     writeCommand(LCD_SETDDRAMADDR | (static_cast<uint8_t>(col) + rowOffsets[row & 0x01]));
 }
 

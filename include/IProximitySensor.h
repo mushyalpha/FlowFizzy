@@ -1,6 +1,7 @@
 #ifndef IPROXIMITYSENSOR_H
 #define IPROXIMITYSENSOR_H
 
+#include <array>
 #include <functional>
 #include <initializer_list>
 #include <string>
@@ -22,7 +23,7 @@ enum class GestureDir {
 
 class InlineChannels {
 private:
-    float data_[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    std::array<float, 4> data_ = {0.0f, 0.0f, 0.0f, 0.0f};
     std::size_t count_ = 0;
 public:
     InlineChannels() = default;

@@ -1,4 +1,5 @@
 #include "hardware/GestureSensor.h"
+#include <array>
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <sys/timerfd.h>
@@ -259,8 +260,8 @@ uint8_t GestureSensor::readRegister(uint8_t reg) {
 }
 
 void GestureSensor::writeRegister(uint8_t reg, uint8_t value) {
-    uint8_t buf[2] = {reg, value};
-    if (::write(fd_, buf, 2) != 2) {
+    std::array<uint8_t, 2> buf = {reg, value};
+    if (::write(fd_, buf.data(), 2) != 2) {
         throw std::runtime_error("Failed to write to register");
     }
 }
