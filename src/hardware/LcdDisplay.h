@@ -39,6 +39,8 @@ public:
 
     LcdDisplay(const LcdDisplay&) = delete;
     LcdDisplay& operator=(const LcdDisplay&) = delete;
+    LcdDisplay(LcdDisplay&&) = delete;
+    LcdDisplay& operator=(LcdDisplay&&) = delete;
 
     // ── IHardwareDevice ───────────────────────────────────────────────────────
 

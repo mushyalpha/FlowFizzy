@@ -36,6 +36,8 @@ public:
 
     PumpController(const PumpController&) = delete;
     PumpController& operator=(const PumpController&) = delete;
+    PumpController(PumpController&&) = delete;
+    PumpController& operator=(PumpController&&) = delete;
 
     bool init() override;
     void shutdown() override;

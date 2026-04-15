@@ -17,6 +17,8 @@ public:
 
     GestureSensor(const GestureSensor&) = delete;
     GestureSensor& operator=(const GestureSensor&) = delete;
+    GestureSensor(GestureSensor&&) = delete;
+    GestureSensor& operator=(GestureSensor&&) = delete;
 
     bool init() override;
     void shutdown() override;

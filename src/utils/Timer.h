@@ -29,6 +29,8 @@ public:
 
     Timer(const Timer&) = delete;
     Timer& operator=(const Timer&) = delete;
+    Timer(Timer&&) = delete;
+    Timer& operator=(Timer&&) = delete;
 
     void registerCallback(TimerCallback cb) { callback_ = std::move(cb); }
 

@@ -40,6 +40,8 @@ public:
 
     FlowMeter(const FlowMeter&) = delete;
     FlowMeter& operator=(const FlowMeter&) = delete;
+    FlowMeter(FlowMeter&&) = delete;
+    FlowMeter& operator=(FlowMeter&&) = delete;
 
     ~FlowMeter() override { shutdown(); }
 
