@@ -20,6 +20,7 @@ enum class GestureDir {
 };
 
 struct GestureEvent {
+private:
     ProximityState state = ProximityState::NONE;
     GestureDir direction = GestureDir::NONE;
 
@@ -29,6 +30,17 @@ struct GestureEvent {
     // Future-proof channel payload: derived classes can publish one or more
     // channels without changing the callback signature.
     std::vector<float> proximityChannels{};
+
+public:
+    GestureEvent() = default;
+    
+    GestureEvent(ProximityState s, GestureDir d, int pVal = 0, std::vector<float> channels = {})
+        : state(s), direction(d), proximityValue(pVal), proximityChannels(std::move(channels)) {}
+
+    ProximityState getState() const { return state; }
+    GestureDir getDirection() const { return direction; }
+    int getProximityValue() const { return proximityValue; }
+    const std::vector<float>& getProximityChannels() const { return proximityChannels; }
 };
 
 class IProximitySensor {

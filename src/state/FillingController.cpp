@@ -27,9 +27,9 @@ FillingController::FillingController(IProximitySensor& gestureSensor,
     // memory_order_release pairs with the acquire-load in tick() to ensure the
     // stored value is visible to the Timer thread before it reads it.
     gestureSensor_.registerEventCallback([this](const GestureEvent& event) {
-        if (event.state == ProximityState::PROXIMITY_TRIGGERED) {
+        if (event.getState() == ProximityState::PROXIMITY_TRIGGERED) {
             bottlePresent_.store(true,  std::memory_order_release);
-        } else if (event.state == ProximityState::PROXIMITY_CLEARED) {
+        } else if (event.getState() == ProximityState::PROXIMITY_CLEARED) {
             bottlePresent_.store(false, std::memory_order_release);
         }
     });

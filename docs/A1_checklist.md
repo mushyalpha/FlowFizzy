@@ -47,7 +47,8 @@
 
 - [x] **Zero global variables.** Do a full search across all `.cpp` and `.h` files. Any global mutable state is an immediate D/E.
   - *Status note (2026-04-15): Full `.cpp`/`.h` audit completed. Removed mutable namespace-scope state (`Logger::mutex_` static storage and `keepRunning` globals in integration tests). Remaining `static` uses are immutable constants (`constexpr`/`const`) or static methods only.*
-- [ ] **All member variables are `private`** (or `protected` where justified). No `public` data members.
+- [x] **All member variables are `private`** (or `protected` where justified). No `public` data members.
+  - *Status note (2026-04-15): Evaluated codebase: refactored GestureEvent and CallbackStats structures to explicitly make fields private and exposed matching getter/setter interfaces. 100% of authored classes/structs are fully encapsulated.*
 - [ ] **All data access is through getters, setters, or callbacks only.** No direct member access from outside the class.
 - [ ] **Internal data structures are efficient** - e.g., consider using `std::atomic` for shared sensor readings, ring buffers or double-buffering for high-frequency data.
 - [ ] **`main.cpp` contains only initialisation code** - no real-time logic, no loops, no processing. After init, it simply blocks on `sigwait()`.

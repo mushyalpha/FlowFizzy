@@ -114,16 +114,25 @@ protected:
 };
 
 float primaryValue(const GestureEvent& event) {
-    if (!event.proximityChannels.empty()) {
-        return event.proximityChannels.front();
+    if (!event.getProximityChannels().empty()) {
+        return event.getProximityChannels().front();
     }
-    return static_cast<float>(event.proximityValue);
+    return static_cast<float>(event.getProximityValue());
 }
 
 struct CallbackStats {
+private:
     std::size_t totalEvents = 0;
     std::size_t multiChannelEvents = 0;
     float lastPrimary = 0.0f;
+public:
+    void incTotal() { ++totalEvents; }
+    void incMultiChannel() { ++multiChannelEvents; }
+    void setLastPrimary(float val) { lastPrimary = val; }
+    
+    std::size_t getTotalEvents() const { return totalEvents; }
+    std::size_t getMultiChannelEvents() const { return multiChannelEvents; }
+    float getLastPrimary() const { return lastPrimary; }
 };
 
 class PumpSpy final : public IPump {
@@ -290,19 +299,19 @@ void stressCallbackSubstitution() {
     IProximitySensor* multiAsBase = &multiSensor;
 
     singleAsBase->registerEventCallback([&singleStats](const GestureEvent& event) {
-        ++singleStats.totalEvents;
-        if (event.proximityChannels.size() > 1) {
-            ++singleStats.multiChannelEvents;
+        singleStats.incTotal();
+        if (event.getProximityChannels().size() > 1) {
+            singleStats.incMultiChannel();
         }
-        singleStats.lastPrimary = primaryValue(event);
+        singleStats.setLastPrimary(primaryValue(event));
     });
 
     multiAsBase->registerEventCallback([&multiStats](const GestureEvent& event) {
-        ++multiStats.totalEvents;
-        if (event.proximityChannels.size() > 1) {
-            ++multiStats.multiChannelEvents;
+        multiStats.incTotal();
+        if (event.getProximityChannels().size() > 1) {
+            multiStats.incMultiChannel();
         }
-        multiStats.lastPrimary = primaryValue(event);
+        multiStats.setLastPrimary(primaryValue(event));
     });
 
     std::vector<IHardwareDevice*> lifecycleDevices = {&singleSensor, &multiSensor};
@@ -316,13 +325,13 @@ void stressCallbackSubstitution() {
         }
     }
 
-    require(singleStats.totalEvents == (kRounds * 2),
+    require(singleStats.getTotalEvents() == (kRounds * 2),
             "Single-channel sensor should emit two events per init cycle");
-    require(multiStats.totalEvents == (kRounds * 3),
+    require(multiStats.getTotalEvents() == (kRounds * 3),
             "Multi-channel sensor should emit three events per init cycle");
-    require(multiStats.multiChannelEvents == multiStats.totalEvents,
+    require(multiStats.getMultiChannelEvents() == multiStats.getTotalEvents(),
             "Multi-channel payload should remain visible through the base callback");
-    require(singleStats.lastPrimary > 0.0f && multiStats.lastPrimary > 0.0f,
+    require(singleStats.getLastPrimary() > 0.0f && multiStats.getLastPrimary() > 0.0f,
             "Primary proximity extraction should work for all substituted sensors");
 }
 

@@ -63,7 +63,7 @@ int main() {
         
         // 1. Gesture Size Selection Logic
         if (appState == AppState::SELECTING) {
-            if (ev.direction == GestureDir::LEFT) {
+            if (ev.getDirection() == GestureDir::LEFT) {
                 if (activeTargetVolume == 500) activeTargetVolume = 400; // L -> M
                 else if (activeTargetVolume == 400) activeTargetVolume = 250; // M -> S
                 
@@ -72,7 +72,7 @@ int main() {
                 else std::cout << "MEDIUM (400ml)\n";
                 waitingMessagePrinted = false;
             } 
-            else if (ev.direction == GestureDir::RIGHT) {
+            else if (ev.getDirection() == GestureDir::RIGHT) {
                 if (activeTargetVolume == 250) activeTargetVolume = 400; // S -> M
                 else if (activeTargetVolume == 400) activeTargetVolume = 500; // M -> L
                 
@@ -81,7 +81,7 @@ int main() {
                 else std::cout << "MEDIUM (400ml)\n";
                 waitingMessagePrinted = false;
             }
-            else if (ev.direction == GestureDir::UP || ev.direction == GestureDir::DOWN) {
+            else if (ev.getDirection() == GestureDir::UP || ev.getDirection() == GestureDir::DOWN) {
                 // Confirm selection with vertical swipe!
                 std::cout << "\n*** SIZE CONFIRMED: " << activeTargetVolume << "ml ***\n";
                 std::cout << "[-] Place your cup under the nozzle to dispense.\n";
@@ -92,7 +92,7 @@ int main() {
         
         // 2. Proximity Dispensing Logic (Only triggers if confirmed!)
         else if (appState == AppState::CONFIRMED) {
-            if (ev.state == ProximityState::PROXIMITY_TRIGGERED) {
+            if (ev.getState() == ProximityState::PROXIMITY_TRIGGERED) {
                 std::cout << "\n>>> CUP DETECTED! Dispensing " << activeTargetVolume << " ml.\n";
                 flow.resetCount();
                 appState = AppState::DISPENSING;
@@ -103,7 +103,7 @@ int main() {
         
         // 3. Emergency Stop Logic
         else if (appState == AppState::DISPENSING) {
-            if (ev.state == ProximityState::PROXIMITY_CLEARED) {
+            if (ev.getState() == ProximityState::PROXIMITY_CLEARED) {
                 std::cout << "\n>>> CUP REMOVED EARLY! Dispensing aborted. Returning to selection screen.\n";
                 pump.turnOff();
                 appState = AppState::SELECTING; 
@@ -113,7 +113,7 @@ int main() {
         
         // 4. Finished Logic
         else if (appState == AppState::DONE) {
-            if (ev.state == ProximityState::PROXIMITY_CLEARED) {
+            if (ev.getState() == ProximityState::PROXIMITY_CLEARED) {
                 std::cout << "\n[-] Cup removed. Returning to size selection mode.\n";
                 appState = AppState::SELECTING;
                 waitingMessagePrinted = false;
