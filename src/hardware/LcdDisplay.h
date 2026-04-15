@@ -37,6 +37,9 @@ public:
     LcdDisplay(int i2cBus, int i2cAddr);
     ~LcdDisplay() override;
 
+    LcdDisplay(const LcdDisplay&) = delete;
+    LcdDisplay& operator=(const LcdDisplay&) = delete;
+
     // ── IHardwareDevice ───────────────────────────────────────────────────────
 
     /** @brief Open I2C device, run HD44780 4-bit init sequence, enable backlight. */

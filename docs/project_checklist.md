@@ -79,7 +79,8 @@
   - *Status note (2026-04-15): Eliminated trailing heap semantics entirely. Refactored smart pointers to deterministic stack bindings and std::optional instances.*
 - [x] **Use STL containers** (`std::vector`, `std::queue`, `std::deque`) instead of C-style arrays where possible.
   - *Status note (2026-04-15): Conducted a sweep of low level driver payloads and transition tables replacing legacy C arrays with STL std::arrays to align with homogenous standard library structures.*
-- [ ] **Review Rule of 3 / Rule of 5** - if any class manages a resource (thread, file handle, socket), ensure copy constructor, copy assignment, and destructor are properly defined (or explicitly deleted).
+- [x] **Review Rule of 3 / Rule of 5** - if any class manages a resource (thread, file handle, socket), ensure copy constructor, copy assignment, and destructor are properly defined (or explicitly deleted).
+  - *Status note (2026-04-15): Explicitly deleted copy constructors and assignment operators across all hardware classes managing system threads, underlying file descriptors, and libgpiod instances. This structurally enforces rule of five semantics uniformly preventing invalid background replication hazards.*
 - [ ] **No memory leaks** - verify all threads are joined, all connections closed, all resources released in `shutdown()` methods.
 
 ---

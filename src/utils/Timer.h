@@ -27,6 +27,9 @@ public:
     explicit Timer(int intervalMs) : intervalMs_(intervalMs) {}
     ~Timer() { stop(); }
 
+    Timer(const Timer&) = delete;
+    Timer& operator=(const Timer&) = delete;
+
     void registerCallback(TimerCallback cb) { callback_ = std::move(cb); }
 
     /** @brief Create timerfd and launch worker thread. */

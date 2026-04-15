@@ -15,6 +15,9 @@ public:
     GestureSensor(int i2cBus = 1, int i2cAddr = 0x39, int threshold = 40);
     ~GestureSensor() override;
 
+    GestureSensor(const GestureSensor&) = delete;
+    GestureSensor& operator=(const GestureSensor&) = delete;
+
     bool init() override;
     void shutdown() override;
 

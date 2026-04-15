@@ -34,6 +34,9 @@ public:
     PumpController(unsigned int chipNo, unsigned int pumpPin, DriveMode mode = DriveMode::TRANSISTOR_ACTIVE_HIGH);
     ~PumpController() override;
 
+    PumpController(const PumpController&) = delete;
+    PumpController& operator=(const PumpController&) = delete;
+
     bool init() override;
     void shutdown() override;
 

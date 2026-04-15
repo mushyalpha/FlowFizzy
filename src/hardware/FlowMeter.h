@@ -38,6 +38,9 @@ public:
     FlowMeter(unsigned int chipNo, unsigned int pinNo, float mlPerPulse = 1.0f)
         : chipNo_(chipNo), pinNo_(pinNo), mlPerPulse_(mlPerPulse) {}
 
+    FlowMeter(const FlowMeter&) = delete;
+    FlowMeter& operator=(const FlowMeter&) = delete;
+
     ~FlowMeter() override { shutdown(); }
 
     // ── IHardwareDevice interface ────────────────────────────────────────────
