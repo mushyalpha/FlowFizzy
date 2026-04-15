@@ -5,6 +5,14 @@ This document tracks technical issues and milestones for the AquaFlow project.
 
 ## Open Issues
 
+### [#16] APDS9960: Gestures not detected & Proximity range degraded in C++ port
+- **Status:** Open
+- **Priority:** Critical
+- **Labels:** `bug`, `hardware`
+- **Description:** After porting from the Adafruit CircuitPython APDS9960 library to our custom C++ driver, gesture detection has stopped working and proximity range has dropped from ~20 cm to ~2–5 cm. Seven root causes identified via comparison with the reference Python library — see [`docs/github_issue_apds9960_draft.md`](github_issue_apds9960_draft.md) for full analysis and proposed fix.
+
+---
+
 ### [#15] Finalise Unit Testing for FillingController
 - **Status:** Open
 - **Priority:** High
