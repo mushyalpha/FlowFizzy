@@ -27,6 +27,7 @@
 #define APDS9960_GCONF1   0xA2
 #define APDS9960_GCONF2   0xA3
 #define APDS9960_GPULSE   0xA6
+#define APDS9960_PPULSE   0x8E
 #define APDS9960_GCONF3   0xAA
 #define APDS9960_GCONF4   0xAB
 #define APDS9960_GFLVL    0xAE
@@ -94,8 +95,17 @@ bool GestureSensor::init() {
         // Step 1: Set default integration time (10ms) and ADC gain (4x)
         // ATIME = 256 - (10 / 2.78) = 256 - 3 = 253
         writeRegister(APDS9960_ATIME, 253);
-        // CONTROL: AGAIN=4x (0x01), PGAIN=0, LDRIVE=0
-        writeRegister(APDS9960_CONTROL, 0x01);
+        // CONTROL: AGAIN=4x (0x01), PGAIN=4x (0x0C), LDRIVE=100mA (0x00)
+        // Adafruit default: CONTROL = 0x01 (AGAIN=4x only); add PGAIN=4x for better
+        // proximity sensitivity at range.
+        writeRegister(APDS9960_CONTROL, 0x0D);  // PGAIN=4x (bits 3:2=11), AGAIN=4x (bits 1:0=01)
+
+        // PPULSE: proximity IR pulse count and length — feeds the PDATA register.
+        // This is SEPARATE from GPULSE (gesture engine). Without this, the proximity
+        // engine runs at power-on default (1 pulse, 4 us) which gives PDATA < 5 at
+        // any practical distance, making threshold=40 unreachable.
+        // Adafruit default: PPLEN=1 (8 us), PPULSE=9 (10 pulses) -> 0x89
+        writeRegister(APDS9960_PPULSE, 0x89);
 
         // Step 2: Disable all engines to start clean
         // ENABLE: GEN=0, PEN=0, AEN=0, PON=0  (everything off)
