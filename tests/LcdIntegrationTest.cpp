@@ -53,17 +53,21 @@ int main() {
     if (waitForStop(std::chrono::seconds(2))) goto cleanup;
 
     // 2. IDLE state
-    lcd.showStatus("IDLE", 0.0, 0);
+    lcd.print(0, "IDLE     0.0 ml");
+    lcd.print(1, "Bottles: 0     ");
     std::cout << "Showing: IDLE / Bottles: 0\n";
     if (waitForStop(std::chrono::seconds(2))) goto cleanup;
 
     // 3. FILLING — simulate real-time volume ticking up (as flow meter would)
-    lcd.showStatus("FILLING", 0.0, 1);
+    lcd.print(0, "FILLING  0.0 ml");
+    lcd.print(1, "Bottles: 1     ");
     std::cout << "Simulating real-time volume fill...\n";
     {
         double vol = 0.0;
         while (vol <= 500.0) {
-            lcd.showVolume(vol);
+            std::ostringstream oss;
+            oss << "FILLING  " << std::fixed << std::setprecision(1) << vol << " ml";
+            lcd.print(0, oss.str());
 
             std::ostringstream oss;
             oss << "Vol: " << std::fixed << std::setprecision(1) << vol << " ml";
@@ -76,12 +80,14 @@ int main() {
     }
 
     // 4. DONE state
-    lcd.showStatus("DONE", 500.0, 1);
+    lcd.print(0, "DONE   500.0 ml");
+    lcd.print(1, "Bottles: 1     ");
     std::cout << "Showing: DONE / Bottles: 1\n";
     if (waitForStop(std::chrono::seconds(2))) goto cleanup;
 
     // 5. Back to IDLE, bottle count incremented
-    lcd.showStatus("IDLE", 0.0, 1);
+    lcd.print(0, "IDLE     0.0 ml");
+    lcd.print(1, "Bottles: 1     ");
     std::cout << "Showing: IDLE / Bottles: 1\n";
     (void)waitForStop(std::chrono::seconds(2));
 

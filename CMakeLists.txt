@@ -62,6 +62,7 @@ add_subdirectory(tests)
 add_executable(pump_integration_test
     tests/PumpIntegrationTest.cpp
     src/hardware/PumpController.cpp
+    src/utils/Logger.cpp
 )
 target_include_directories(pump_integration_test PRIVATE include src)
 target_link_libraries(pump_integration_test gpiodcxx pthread)
@@ -70,6 +71,7 @@ target_link_libraries(pump_integration_test gpiodcxx pthread)
 add_executable(lcd_integration_test
     tests/LcdIntegrationTest.cpp
     src/hardware/LcdDisplay.cpp
+    src/utils/Logger.cpp
 )
 target_include_directories(lcd_integration_test PRIVATE include src)
 target_link_libraries(lcd_integration_test pthread)
@@ -81,6 +83,7 @@ add_executable(hardware_trio_test
     src/hardware/FlowMeter.cpp
     src/hardware/LcdDisplay.cpp
     src/hardware/GestureSensor.cpp
+    src/utils/Logger.cpp
 )
 target_include_directories(hardware_trio_test PRIVATE include src)
 target_link_libraries(hardware_trio_test gpiodcxx pthread)
@@ -90,6 +93,7 @@ add_executable(pump_flow_duo_test
     tests/PumpFlowDuoTest.cpp
     src/hardware/PumpController.cpp
     src/hardware/FlowMeter.cpp
+    src/utils/Logger.cpp
 )
 target_include_directories(pump_flow_duo_test PRIVATE include src)
 target_link_libraries(pump_flow_duo_test gpiodcxx pthread)
