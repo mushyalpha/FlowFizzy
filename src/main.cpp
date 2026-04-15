@@ -18,6 +18,9 @@ int main() {
     FlowMeter        flowMeter(GPIO_CHIP_NO, FLOW_PIN, static_cast<float>(ML_PER_PULSE));
     LcdDisplay       lcd(LCD_I2C_BUS, LCD_I2C_ADDRESS);
 
+    // ── Application Orchestration ─────────────────────────────────────────────
+    AquaFlowApp app(gestureSensor, pump, flowMeter, lcd);
+
     // ── Initialise hardware ───────────────────────────────────────────────────
     if (!gestureSensor.init()) {
         Logger::error("Failed to initialise GestureSensor");
@@ -37,9 +40,6 @@ int main() {
     if (!lcd.init()) {
         Logger::error("Failed to initialise LcdDisplay — continuing without display");
     }
-
-    // ── Application Orchestration ─────────────────────────────────────────────
-    AquaFlowApp app(gestureSensor, pump, flowMeter, lcd);
     
     Logger::info("=== AquaFlow Filling Machine Started ===");
     Logger::info("Mode          : Dynamic Gesture Selection (L=200/D=400/R=600 ml)");
