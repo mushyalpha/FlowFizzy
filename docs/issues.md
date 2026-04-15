@@ -3,6 +3,18 @@
 This document tracks technical issues and milestones for the AquaFlow project. 
 *Note: These are synced to GitHub Issues periodically.*
 
+## Demo Configuration
+
+> **Liquid:** Pepsi
+> **Cups:** McDonald's standard soft-drink cups
+> - Small  → 250 ml
+> - Medium → 400 ml
+> - Large  → 500 ml
+>
+> These volumes are already configured in `PinConfig.h` as `CUP_SMALL_ML`, `CUP_MEDIUM_ML`, and `CUP_LARGE_ML`.
+
+---
+
 ## Open Issues
 
 ### [#16] APDS9960: Gestures not detected & Proximity range degraded in C++ port
