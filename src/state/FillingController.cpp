@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <sstream>
+#include <iomanip>
 
 using Clock = std::chrono::steady_clock;
 
@@ -65,6 +66,11 @@ void FillingController::tick() {
                 case CupSize::MEDIUM: targetVolumeML_.store(CUP_MEDIUM_ML); break;
                 case CupSize::LARGE:  targetVolumeML_.store(CUP_LARGE_ML);  break;
             }
+            // Reset the flow meter here — this is the ONLY place it is reset.
+            // A new size selection always starts a completely fresh fill session.
+            // Cup removals mid-fill do NOT reset the meter (cumulative filling).
+            flowMeter_.resetCount();
+
             std::ostringstream msg;
             msg << "Size confirmed: " << getSizeName()
                 << " (" << static_cast<int>(targetVolumeML_.load()) << " ml)"
@@ -94,9 +100,20 @@ void FillingController::tick() {
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             Clock::now() - holdStartTime_).count();
         if (elapsed >= CUP_CONFIRM_MS) {
-            flowMeter_.resetCount();
+            // NOTE: flowMeter_ is NOT reset here — we continue from whatever
+            // volume was already dispensed (cumulative fill across cup removals).
+            // The meter is only reset when the user selects a new size.
             pump_.turnOn();
-            Logger::info("Pump started!");
+            double already = flowMeter_.getVolumeML();
+            double remaining = targetVolumeML_.load(std::memory_order_relaxed) - already;
+            std::ostringstream msg;
+            if (already > 0.5) {
+                msg << "Resuming fill: " << std::fixed << std::setprecision(1)
+                    << already << " ml done, " << remaining << " ml remaining.";
+            } else {
+                msg << "Pump started!";
+            }
+            Logger::info(msg.str());
             state_ = SystemState::FILLING;
         }
         break;
@@ -107,7 +124,10 @@ void FillingController::tick() {
         if (!bottlePresent_.load(std::memory_order_acquire)) {
             // Emergency abort — cup removed during fill
             pump_.turnOff();
-            Logger::info("Cup removed — fill aborted. Place cup to retry.");
+            std::ostringstream msg;
+            msg << "Cup removed at " << std::fixed << std::setprecision(1)
+                << flowMeter_.getVolumeML() << " ml — replace cup to continue.";
+            Logger::info(msg.str());
             state_ = SystemState::WAITING_FOR_CUP;
             break;
         }
@@ -122,9 +142,8 @@ void FillingController::tick() {
     // ── FILL_COMPLETE: pump off; wait for cup removal to reset ───────────────
     case SystemState::FILL_COMPLETE: {
         if (!bottlePresent_.load(std::memory_order_acquire)) {
-            flowMeter_.resetCount();
-            // Return to size selection so the user can pick a new size
-            // (or just press 's' again to refill the same size)
+            // Cup is gone — return to size selection for next customer.
+            // flowMeter_ will be reset when the next size is confirmed.
             state_ = SystemState::SELECTING_SIZE;
         }
         break;
