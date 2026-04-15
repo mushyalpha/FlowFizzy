@@ -53,8 +53,8 @@
   - *Status note (2026-04-15): Audit complete. All custom C++ classes use strict getter/setter/callback encapsulation. The only direct field access is on standard POSIX C structs (itimerspec, timespec) required for kernel system calls, which are exempt from OOP rules.*
 - [x] **Internal data structures are efficient** - e.g., consider using `std::atomic` for shared sensor readings, ring buffers or double-buffering for high-frequency data.
   - *Status note (2026-04-15): Audit complete. Replaced `std::vector` inside `GestureEvent` with a stack-allocated bounded container (`InlineChannels`) to eliminate per-event heap allocations in user-space payload handling during sensor ticks. Atomics and bounded buffers are used across threaded components.*
-- [ ] **`main.cpp` contains only initialisation code** - no real-time logic, no loops, no processing. After init, it simply blocks on `sigwait()`.
-  -  **Current state:** `main.cpp` already does this correctly with `sigwait()` - confirm it stays this way.
+- [x] **`main.cpp` contains only initialisation code** - no real-time logic, no loops, no processing. After init, it simply blocks on `sigwait()`.
+  - *Status note (2026-04-15): Extracted all timer wiring, display rendering, and shutdown orchestration into a dedicated `AquaFlowApp` class. `main.cpp` now strictly executes dependency injection and blocks passively.*
 - [ ] **All callbacks are transmitted through `std::function` or abstract interface** - not via raw global function pointers.
 - [ ] **Safe data receiving and releasing** - verify fault-checking mechanisms are in place when sensors disconnect or provide erroneous data.
 

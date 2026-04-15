@@ -11,6 +11,7 @@ include_directories(src)       # hardware/, state/, monitor/, utils/ sub-paths
 # ── Main executable ───────────────────────────────────────────────────────────
 add_executable(filling_machine
     src/main.cpp
+    src/app/AquaFlowApp.cpp
     src/hardware/GestureSensor.cpp
     src/hardware/PumpController.cpp
     src/hardware/FlowMeter.cpp
