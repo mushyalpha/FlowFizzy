@@ -69,9 +69,9 @@ int main() {
             oss << "FILLING  " << std::fixed << std::setprecision(1) << vol << " ml";
             lcd.print(0, oss.str());
 
-            std::ostringstream oss;
-            oss << "Vol: " << std::fixed << std::setprecision(1) << vol << " ml";
-            std::cout << "\r  " << oss.str() << std::flush;
+            std::ostringstream oss2;
+            oss2 << "Vol: " << std::fixed << std::setprecision(1) << vol << " ml";
+            std::cout << "\r  " << oss2.str() << std::flush;
 
             vol += 25.0;
             if (waitForStop(std::chrono::milliseconds(500))) goto cleanup;
