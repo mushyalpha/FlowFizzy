@@ -51,9 +51,18 @@ constexpr int GESTURE_I2C_BUS  = 1;      // /dev/i2c-1
 constexpr int GESTURE_I2C_ADDR = 0x39;   // APDS-9960 fixed I2C address
 
 // Proximity threshold (0–255).
-// Ambient reading with no object: ~7-13.  Cup at 5-10 cm: ~15-30.
-// Raise if false triggers occur; lower if cup is not detected reliably.
-constexpr int GESTURE_THRESHOLD = 20;
+// CALIBRATED 2026-04-15 against McDonald's UK medium cup at 10 cm distance:
+//   Ambient (no object)  :   5 – 16
+//   Cup at exactly 10 cm :  94 – 112  (average 103)
+//   Cup closer than 10 cm: 112 – 255
+//
+// Threshold set to 90 (slightly below the 10 cm floor of 94) to give a small
+// margin for cup angle/reflectivity variation while still reliably excluding
+// objects further than 10 cm.
+//
+// To re-calibrate: run tests/gesture_direct_test.py and note PDATA at your
+// target distance, then set this to ~10% below that minimum reading.
+constexpr int GESTURE_THRESHOLD = 90;
 
 // LCD1602 with PCF8574T I2C backpack
 constexpr int LCD_I2C_BUS     = 1;
