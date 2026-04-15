@@ -29,7 +29,6 @@ void Timer::start() {
 }
 
 void Timer::stop() {
-    if (!running_) return;
     running_ = false;
     // Close fd so that the blocking read() in worker() unblocks immediately
     if (timerFd_ >= 0) {

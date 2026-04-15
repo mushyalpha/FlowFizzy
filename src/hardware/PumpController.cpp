@@ -50,13 +50,14 @@ bool PumpController::init() {
 }
 
 void PumpController::shutdown() {
-    if (!initialised_) return;
-    // Ensure pump is off before releasing GPIO
-    request_->set_value(pumpPin_, offValue());
+    if (initialised_ && request_) {
+        // Ensure pump is off before releasing GPIO
+        request_->set_value(pumpPin_, offValue());
+    }
     running_     = false;
     initialised_ = false;
-    request_.reset();
-    chip_.reset();
+    if (request_) request_.reset();
+    if (chip_) chip_.reset();
     Logger::info("PumpController shut down (pump OFF).");
 }
 

@@ -11,13 +11,14 @@ bool FlowMeter::init() {
     if (running_) return true; 
     try {
         setupGpio();
+        running_ = true;
+        pulseCount_ = 0;
+        edgeThread_ = std::thread(&FlowMeter::edgeWorker, this);
+        return true;
     } catch (const std::exception& e) {
+        shutdown();
         return false;
     }
-    running_ = true;
-    pulseCount_ = 0;
-    edgeThread_ = std::thread(&FlowMeter::edgeWorker, this);
-    return true;
 }
 
 void FlowMeter::shutdown() {
