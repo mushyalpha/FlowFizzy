@@ -130,58 +130,29 @@ bool GestureSensor::init() {
         writeRegister(APDS9960_ENABLE, 0x01);  // PON=1
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-        // ── Clear stale gesture FIFO data from any previous session ─────────
-        // GCONF4 bit 2 (GFIFO_CLR) flushes the FIFO; it auto-clears after.
-        // Reference: CircuitPython apds9960.py init: _set_bit(GCONF4, 0x04, True)
-        writeRegister(APDS9960_GCONF4, 0x04);
+        // ── Proximity-only configuration ──────────────────────────────────────
+        // The gesture engine (GEN) is intentionally NOT enabled here.
+        // When GEN=1 the sensor captures proximity events and enters gesture
+        // mode whenever PDATA > GPENTH, preventing PDATA from updating normally.
+        // Since the new design uses proximity-only detection, we mirror the
+        // exact register sequence used by the working Python verification test:
+        //   bus.write_byte_data(ADDR, 0x80, 0x05)  # PON + PEN
+        //
+        // PPULSE: 8 µs pulse length, 10 pulses — gives good range without
+        // saturating at cup distances (~5-10 cm).
+        writeRegister(APDS9960_PPULSE, 0x89);
 
-        // ── Configure Gesture Engine ─────────────────────────────────────────
-        // Register values are drawn from both the Adafruit Arduino library
-        // (v1.3.1) and the CircuitPython library, choosing whichever defaults
-        // were proven to give the best range and reliability.
+        // CONTROL: PGAIN=4x (bits 3:2 = 11), AGAIN=4x (bits 1:0 = 01)
+        writeRegister(APDS9960_CONTROL, 0x0D);
 
-        // GCONF3: use all four photodiode dimensions (Arduino default)
-        writeRegister(APDS9960_GCONF3, 0x00);
+        // ENABLE: PON=1, PEN=1 only — no gesture engine, no ALS
+        writeRegister(APDS9960_ENABLE, 0x00);  // power off
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        writeRegister(APDS9960_ENABLE, 0x05);  // PON=1, PEN=1
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-        // GCONF1 = (GFIFOTH << 6) | (GEXMSK << 2) | GEXPERS
-        // GFIFOTH=2 (8 datasets before GINT) — CircuitPython default.
-        // GEXPERS=2 (4 consecutive exit cycles before leaving gesture mode) —
-        //   prevents premature exit on transient dips below the exit threshold.
-        // GEXMSK=0 (no photodiode masking).
-        // → (2 << 6) | (0 << 2) | 2 = 0x82
-        writeRegister(APDS9960_GCONF1, 0x82);
-
-        // GCONF2 = (GGAIN << 5) | (GLDRIVE << 3) | GWTIME
-        // GGAIN=2 (4x), GLDRIVE=0 (100mA), GWTIME=1 (2.8ms)
-        // Both Arduino and CircuitPython use GGAIN=2; CircuitPython adds GWTIME=1.
-        // → (2 << 5) | (0 << 3) | 1 = 0x41
-        writeRegister(APDS9960_GCONF2, 0x41);
-
-        // GPENTH: gesture engine entry threshold (proximity counts).
-        // CircuitPython uses 5 (very sensitive, allows detection at ~20 cm).
-        // The Arduino library uses 50, which restricts range to ~5 cm.
-        // We use 5 to match the working CircuitPython behaviour.
-        writeRegister(APDS9960_GPENTH, 5);
-
-        // GEXTH: gesture engine exit threshold (all photodiodes below this → exit).
-        // CircuitPython sets 30 (0x1E) but this breaks us because GPENTH is 5.
-        // It causes the gesture engine to instantly abort if the hand is not close enough
-        // to immediately read >30. We revert this to 0 to match the Arduino library.
-        writeRegister(APDS9960_GEXTH, 0);
-
-        // GPULSE: GPLEN=3 (32us), GPULSE=9 (10 pulses) → (3 << 6) | 9 = 0xC9
-        // Arduino library default. More IR energy = better detection range.
-        writeRegister(APDS9960_GPULSE, 0xC9);
-
-        // ── Enable gesture engine ────────────────────────────────────────────
-        // ENABLE: PON=1, PEN=1, GEN=1 → 0x01 | 0x04 | 0x40 = 0x45
-        writeRegister(APDS9960_ENABLE, 0x45);
-
-        // GCONF4: GMODE=1 (force gesture engine entry)
-        writeRegister(APDS9960_GCONF4, 0x01);
-
-        // ── Reset gesture direction counters ─────────────────────────────────
-        resetCounts();
+        Logger::info("GestureSensor: proximity-only mode (threshold=" +
+                     std::to_string(threshold_) + "), PDATA register polling active.");
 
         // ── RTES: timerfd-driven I2C sampling ────────────────────────────────
         // The APDS-9960 INT pin is not wired; instead a timerfd fires every
@@ -432,23 +403,9 @@ void GestureSensor::worker() {
                 }
             }
 
-            // 2. Evaluate Gesture (Adafruit algorithm)
-            uint8_t gesture = readGesture();
-            if (gesture != 0 && eventCallback_) {
-                GestureDir dir = GestureDir::NONE;
-                switch (gesture) {
-                    case GESTURE_UP:    dir = GestureDir::UP;    break;
-                    case GESTURE_DOWN:  dir = GestureDir::DOWN;  break;
-                    case GESTURE_LEFT:  dir = GestureDir::LEFT;  break;
-                    case GESTURE_RIGHT: dir = GestureDir::RIGHT; break;
-                }
-                if (dir != GestureDir::NONE) {
-                    eventCallback_({ProximityState::NONE,
-                                    dir,
-                                    prox,
-                                    {static_cast<float>(prox)}});
-                }
-            }
+            // Gesture reading deliberately removed — proximity-only design.
+            // The gesture engine is disabled in init(); PDATA is the sole
+            // trigger mechanism.
 
         } catch (const std::exception& e) {
             if (errorCallback_) errorCallback_(e.what());
