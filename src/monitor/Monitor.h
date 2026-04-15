@@ -21,5 +21,6 @@ public:
     void onStateChange(const std::string& state, double volumeML, int bottleCount);
 
 private:
-    std::string lastState_ = "";
+    std::string lastState_   = "";
+    double      lastVolumeML_ = -1.0;  ///< last volume at which status was logged
 };

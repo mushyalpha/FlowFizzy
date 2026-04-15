@@ -104,3 +104,11 @@ add_executable(lsp_stress_test
     src/state/FillingController.cpp
 )
 target_include_directories(lsp_stress_test PRIVATE include src)
+
+add_executable(lcd_hello_world
+    tests/LcdHelloWorld.cpp
+    src/hardware/LcdDisplay.cpp
+    src/utils/Logger.cpp
+)
+target_include_directories(lcd_hello_world PRIVATE include src)
+target_link_libraries(lcd_hello_world pthread)
