@@ -4,113 +4,126 @@
 #include "IProximitySensor.h"
 #include "IPump.h"
 #include "IFlowMeter.h"
+
 #include <atomic>
 #include <chrono>
 #include <functional>
 #include <string>
 
+// ─── Cup size selection ───────────────────────────────────────────────────────
+
 /**
- * @brief System states for the filling cycle.
+ * @brief Three dispense sizes mapped to McDonald's UK soft-drink cup volumes.
  *
- * WAITING         — No bottle detected, system idle
- * AWAIT_SELECTION — Proximity established, waiting for directional swipe
- * FILLING         — Pump ON, counting flow pulses
- * FILL_COMPLETE   — Target volume reached, pump OFF, resetting
+ * Small = 250 ml  |  Medium = 400 ml  |  Large = 500 ml
+ */
+enum class CupSize { SMALL, MEDIUM, LARGE };
+
+// ─── System state machine ─────────────────────────────────────────────────────
+
+/**
+ * @brief Operational states of the AquaFlow filling cycle.
+ *
+ * SELECTING_SIZE  — User cycles S/M/L with short button presses;
+ *                   a long press confirms the selection.
+ * WAITING_FOR_CUP — Size confirmed; system waits for a cup within
+ *                   proximity range (~5-10 cm from the APDS-9960).
+ * CONFIRMING      — Cup detected; hold timer debounces the placement.
+ * FILLING         — Pump ON; flow meter counts volume dispensed.
+ * FILL_COMPLETE   — Target volume reached; pump OFF; waiting for cup removal.
  */
 enum class SystemState {
-    WAITING,
-    AWAIT_SELECTION,
+    SELECTING_SIZE,
+    WAITING_FOR_CUP,
+    CONFIRMING,
     FILLING,
     FILL_COMPLETE
 };
 
 /**
- * @brief Main state machine that orchestrates the filling cycle.
+ * @brief Main state machine that orchestrates the AquaFlow filling cycle.
  *
- * Cup detection is now event-driven: IProximitySensor fires a proximity
- * callback which sets a thread-safe flag.  tick() reads that flag on
- * each timer cycle — no polling, no distance measurements.
+ * User interaction model:
+ *  - Short button press  → cycle cup size (S → M → L → S).
+ *  - Long button press   → confirm selected size; enter WAITING_FOR_CUP.
+ *  - Cup placed in range → CONFIRMING hold timer starts.
+ *  - Cup held steady     → pump starts; FILLING begins.
+ *  - Target volume reached → pump stops; FILL_COMPLETE.
+ *  - Cup removed         → return to SELECTING_SIZE.
  *
- * The FillingController depends only on behavior abstractions
- * (IProximitySensor, IPump, IFlowMeter), supporting OCP and DIP.
+ * Cross-thread safety:
+ *  Button events (onShortPress / onLongPress) are called from a keyboard or
+ *  GPIO thread.  Proximity events are posted from the sensor worker thread.
+ *  All shared state uses std::atomic to prevent data races.
+ *
+ * The class depends only on behaviour abstractions (IProximitySensor,
+ * IPump, IFlowMeter), preserving SOLID OCP and DIP.
  */
 class FillingController {
 public:
-    /**
-     * @param gestureSensor    Reference to a proximity/gesture source abstraction.
-     * @param pump             Reference to a pump actuator abstraction.
-     * @param flowMeter        Reference to a flow measurement abstraction.
-     */
-    FillingController(IProximitySensor& gestureSensor,
-                      IPump&           pump,
-                      IFlowMeter&      flowMeter);
+    FillingController(IProximitySensor& proximitySensor,
+                      IPump&            pump,
+                      IFlowMeter&       flowMeter);
 
-    /**
-     * @brief Run one cycle of the state machine.
-     *
-     * Call this repeatedly (e.g. from a Timer callback).
-     * After each tick, calls the registered monitor callback (if any)
-     * with the current state, volume, and bottle count.
-     */
+    /** @brief Run one cycle of the state machine (call from timer callback). */
     void tick();
 
+    // ── Button event handlers ─────────────────────────────────────────────────
+
     /**
-     * @brief Register a callback that is called after every tick.
-     *
-     * Used to wire in Monitor or any other observer without coupling
-     * FillingController to a specific output class (SOLID OCP).
+     * @brief Short button press — cycle Small → Medium → Large → Small.
+     * No-op unless in SELECTING_SIZE.  Thread-safe.
      */
+    void onShortPress();
+
+    /**
+     * @brief Long button press — confirm the currently selected size.
+     * No-op unless in SELECTING_SIZE.  Thread-safe.
+     */
+    void onLongPress();
+
+    // ── Observer ──────────────────────────────────────────────────────────────
+
     using MonitorCallback = std::function<void(const std::string& state,
                                                double volumeML,
                                                int    bottleCount)>;
     void registerMonitor(MonitorCallback cb) { monitorCallback_ = std::move(cb); }
 
-    /** @brief Get the current system state. */
-    SystemState getState() const;
+    // ── Accessors ─────────────────────────────────────────────────────────────
 
-    /** @brief Get a human-readable name for the current state. */
-    std::string getStateName() const;
-
-    /** @brief Get the current volume dispensed in ml. */
-    double getCurrentVolumeML() const;
-
-    /** @brief Get the target volume in ml. */
-    double getTargetVolumeML() const;
-
-    /** @brief Get the total number of bottles filled this session. */
-    int getBottleCount() const;
+    SystemState getState()           const;
+    std::string getStateName()       const;  ///< e.g. "SELECT:MEDIUM", "FILLING"
+    std::string getSizeName()        const;  ///< "SMALL" | "MEDIUM" | "LARGE"
+    double      getTargetVolumeML()  const;
+    double      getCurrentVolumeML() const;
+    int         getBottleCount()     const;
 
 private:
-    // Hardware references
-    IProximitySensor& gestureSensor_;
-    IPump& pump_;
-    IFlowMeter& flowMeter_;
+    IProximitySensor& proximitySensor_;
+    IPump&            pump_;
+    IFlowMeter&       flowMeter_;
 
-    // Target Volume, determined dynamically by user gesture
-    std::atomic<double> targetVolumeML_{0.0};
+    // ── Size selection (written by button thread, read by timer thread) ───────
+    std::atomic<CupSize> selectedSize_{CupSize::SMALL};
+    std::atomic<bool>    sizeConfirmed_{false};   ///< set by onLongPress, consumed by tick
 
-    // State
-    SystemState state_;
+    // ── Fill target (set once on size confirmation) ───────────────────────────
+    std::atomic<double>  targetVolumeML_{0.0};
+
+    // ── State-machine internals ───────────────────────────────────────────────
+    SystemState state_{SystemState::SELECTING_SIZE};
     std::chrono::steady_clock::time_point holdStartTime_;
-    int bottleCount_;
+    int bottleCount_{0};
 
     /**
-     * @brief Thread-safe flag set by the IProximitySensor proximity callback.
+     * @brief Thread-safe cup-presence flag.
      *
-     * true  = cup/bottle is currently detected in range
-     * false = no cup detected
-     *
-     * Written from the sensor worker thread, read from the Timer
-     * callback thread — std::atomic ensures no data race.
+     * Written (release) by the IProximitySensor callback thread;
+     * read (acquire) by tick() on the Timer thread.
      */
     std::atomic<bool> bottlePresent_{false};
 
-    /**
-     * @brief Thread-safe flag capturing the last directional gesture.
-     */
-    std::atomic<GestureDir> gestureDirection_{GestureDir::NONE};
-
-    MonitorCallback monitorCallback_;  ///< Optional observer, called after each tick.
+    MonitorCallback monitorCallback_;
 };
 
 #endif // FILLINGCONTROLLER_H

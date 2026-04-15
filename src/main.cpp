@@ -42,8 +42,10 @@ int main() {
     }
     
     Logger::info("=== AquaFlow Filling Machine Started ===");
-    Logger::info("Mode          : Dynamic Gesture Selection (L=200/D=400/R=600 ml)");
-    Logger::info("Gesture sensor: I2C bus " + std::to_string(GESTURE_I2C_BUS) + ", addr 0x39");
+    Logger::info("Mode          : Button-select + Proximity-trigger");
+    Logger::info("Sizes         : Small=250 ml  Medium=400 ml  Large=500 ml");
+    Logger::info("Controls      : 'b'=cycle size   's'=select   Ctrl+C=quit");
+    Logger::info("Proximity     : I2C bus " + std::to_string(GESTURE_I2C_BUS) + ", addr 0x39, threshold=" + std::to_string(GESTURE_THRESHOLD));
 
     app.start();
 
