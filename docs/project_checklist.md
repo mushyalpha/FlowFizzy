@@ -71,7 +71,8 @@
   - *Status note (2026-04-15): Codebase audit confirms complete absence of raw allocation mechanisms. All memory lifecycle boundaries rely implicitly on scope deterministic destruction and robust smart pointer architectures.*
 - [x] **No `malloc`/`free` anywhere in the codebase.** Run a search.
   - *Status note (2026-04-15): Source file search confirms absolute absence of manual memory operations. Discovered nomenclature exclusively inhabits non executable documentation boundaries.*
-- [ ] **No `void*` pointers anywhere.** Run a search.
+- [x] **No `void*` pointers anywhere.** Run a search.
+  - *Status note (2026-04-15): Type erasure audit confirms complete absence of void pointers across all source logic. Type safety is strictly guaranteed through explicit object typings and abstractions.*
 - [ ] **Use `std::shared_ptr` / `std::unique_ptr`** for any dynamically allocated objects.
 - [ ] **Prefer copy constructors / value semantics** - assign objects directly (e.g., `std::thread thr = std::thread(...)`) instead of heap allocation.
 - [ ] **Use STL containers** (`std::vector`, `std::queue`, `std::deque`) instead of C-style arrays where possible.
