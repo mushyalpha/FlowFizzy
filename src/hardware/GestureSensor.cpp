@@ -429,7 +429,9 @@ void GestureSensor::worker() {
                                     {static_cast<float>(prox)}});
                 }
             } else if (!currentlyTriggered && isTriggered) {
-                int hysteresis_lower = (threshold_ - 20 >= 0) ? (threshold_ - 20) : 0;
+                // If threshold is very low (e.g., 15), subtracting 20 causes it to never clear.
+                // We use a small hysteresis gap (e.g., threshold - 3) to allow graceful exit.
+                int hysteresis_lower = (threshold_ > 5) ? (threshold_ - 3) : 0;
                 if (prox < hysteresis_lower) {
                     isTriggered = false;
                     if (eventCallback_) {
