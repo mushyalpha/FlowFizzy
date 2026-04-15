@@ -40,26 +40,41 @@ void AquaFlowApp::start() {
         lastLcdState_ = state;
 
         if (state.rfind("SELECT:", 0) == 0) {
-            // e.g. "SELECT:MEDIUM"
-            lcd_.print(0, "Size: " + state.substr(7));   // "Size: MEDIUM"
-            lcd_.print(1, "'b'cycle  's'select");
+            // e.g. state = "SELECT:MEDIUM"
+            // Terminal prints: "Size: MEDIUM"
+            // LCD row 0: "Size: MEDIUM (400ml)"  — mirrors terminal + shows ml
+            // LCD row 1: "b=cycle  s=select"      — mirrors terminal hint
+            std::string sizeName = state.substr(7);   // "SMALL" | "MEDIUM" | "LARGE"
+            int ml = static_cast<int>(controller_.getTargetVolumeML());
+            // targetVolumeML is 0 until size is confirmed, so show defaults
+            if (sizeName == "SMALL")  ml = 250;
+            else if (sizeName == "MEDIUM") ml = 400;
+            else if (sizeName == "LARGE")  ml = 500;
+            lcd_.print(0, sizeName + " (" + std::to_string(ml) + "ml)");
+            lcd_.print(1, "b=cycle  s=select");
 
         } else if (state == "PLACE CUP") {
+            // Terminal prints: "Size confirmed: MEDIUM (400 ml) — place your cup within range."
+            // LCD row 0: "Place cup..."
+            // LCD row 1: "Target: 400 ml"
             lcd_.print(0, "Place cup...");
             std::ostringstream r1;
             r1 << "Target: " << static_cast<int>(controller_.getTargetVolumeML()) << " ml";
             lcd_.print(1, r1.str());
 
         } else if (state == "CONFIRMING") {
-            lcd_.print(0, "Hold steady...");
-            lcd_.print(1, "Confirming cup");
+            // Terminal prints: "Cup detected! Confirming placement — hold steady..."
+            lcd_.print(0, "Cup detected!");
+            lcd_.print(1, "Hold steady...");
 
         } else if (state == "FILLING") {
+            // Terminal prints: "Cup confirmed! Filling in progress..."
             lcd_.print(0, "Filling...");
-            // Volume display updated at high frequency in the timer callback below
+            // Volume updated at high frequency in the timer callback below
 
         } else if (state == "COMPLETE") {
-            lcd_.print(0, "Done!  Remove cup");
+            // Terminal prints: "Target reached! Dispensed 400.0 ml. Cups filled this session: 1"
+            lcd_.print(0, "Done! Remove cup");
             std::ostringstream r1;
             r1 << std::fixed << std::setprecision(0)
                << vol << " ml  (cup " << cups << ")";
