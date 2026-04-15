@@ -17,6 +17,37 @@ This document tracks technical issues and milestones for the AquaFlow project.
 
 ## Open Issues
 
+### [#19] Volume Calibration: McDonald's Cup Sizes + LCD Validation
+- **Status:** Open
+- **Priority:** Critical
+- **Labels:** `calibration`, `hardware`, `lcd`
+- **Description:** The current volume targets (`CUP_SMALL_ML=250`, `CUP_MEDIUM_ML=400`, `CUP_LARGE_ML=500`) are based on nominal McDonald's UK cup specs, not measured Pepsi fill levels. Real-world accuracy depends on the flow meter's `ML_PER_PULSE` calibration and actual cup capacity under normal fill conditions.
+- **Tasks to complete:**
+  - [ ] Measure the actual usable volume of each McDonald's cup size (Small / Medium / Large) with Pepsi.
+  - [ ] Run a dispense test for each size, weigh or measure the dispensed liquid, and adjust `CUP_SMALL_ML`, `CUP_MEDIUM_ML`, `CUP_LARGE_ML` in `include/PinConfig.h` accordingly.
+  - [ ] Re-verify `ML_PER_PULSE` calibration constant — current value is `0.073774` ml/pulse (measured 2026-04-02 with water; Pepsi may behave slightly differently due to density/viscosity).
+  - [ ] Confirm the LCD second row shows the correct target ml for each size and that the live fill progress accurately reflects the dispensed volume.
+
+---
+
+### [#20] 3D Printing: Enclosure and Mounting Design
+- **Status:** Open
+- **Priority:** High
+- **Labels:** `hardware`, `mechanical`, `design`
+- **Description:** The system currently has no physical enclosure or mounting structure. All hardware components — the Raspberry Pi 5, pump reservoir, flow meter, LCD display, and APDS-9960 sensor — need to be mounted in a unified, stable, and visually presentable housing suitable for a demo.
+- **Design requirements:**
+  - [ ] Reservoir mount to hold the Pepsi bottle/container above the pump.
+  - [ ] Sensor bay aligned at cup-top height for reliable proximity detection (~5–10 cm range).
+  - [ ] Secure bracket for the LCD1602 display, facing the user.
+  - [ ] Cable management channels for I2C, GPIO, and power wires.
+  - [ ] Dispense nozzle guide to direct water flow accurately into McDonald's cups.
+  - [ ] Raspberry Pi 5 mounting with ventilation clearance.
+- **Tools:** CAD software (e.g., Fusion 360 / FreeCAD / Tinkercad); 3D printer (PLA recommended).
+
+---
+
+
+
 ### [#16] APDS9960: Gestures not detected & Proximity range degraded in C++ port
 - **Status:** Open
 - **Priority:** Critical
