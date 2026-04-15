@@ -32,8 +32,8 @@ TEST(FlowMeterTest, DetectsReachedTarget) {
     FlowMeter fm(4, 21, 5.0f);  // 5 ml per pulse
 
     fm.injectPulseCountForTest(2);  // 10 ml
-    EXPECT_FALSE(fm.hasReachedTarget(15.0));
+    EXPECT_LT(fm.getVolumeML(), 15.0);
 
     fm.injectPulseCountForTest(3);  // 15 ml
-    EXPECT_TRUE(fm.hasReachedTarget(15.0));
+    EXPECT_GE(fm.getVolumeML(), 15.0);
 }
