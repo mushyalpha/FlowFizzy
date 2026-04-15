@@ -18,6 +18,12 @@ bool FlowMeter::init() {
     return true;
 }
 
+#ifdef AQUAFLOW_TESTING
+void FlowMeter::injectPulseCountForTest(int pulseCount) {
+    pulseCount_.store(pulseCount);
+}
+#endif
+
 void FlowMeter::shutdown() {
     if (!running_) return;
     running_ = false;

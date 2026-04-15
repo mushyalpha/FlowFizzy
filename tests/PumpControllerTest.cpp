@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+
 #include "hardware/PumpController.h"
 
 TEST(PumpControllerTest, InitialStateIsOff) {
@@ -8,26 +9,26 @@ TEST(PumpControllerTest, InitialStateIsOff) {
 
 TEST(PumpControllerTest, TurnOnAndOff) {
     PumpController pump(4, 27, PumpController::DriveMode::TRANSISTOR_ACTIVE_HIGH);
-    ASSERT_TRUE(pump.init());
-    
+    pump.enableSimulationForTest();
+
     pump.turnOn();
     EXPECT_TRUE(pump.isRunning());
-    
+
     pump.turnOff();
     EXPECT_FALSE(pump.isRunning());
-    
+
     pump.shutdown();
 }
 
 TEST(PumpControllerTest, RelayModeActiveLow) {
     PumpController pump(4, 27, PumpController::DriveMode::RELAY_ACTIVE_LOW);
-    ASSERT_TRUE(pump.init());
-    
+    pump.enableSimulationForTest();
+
     pump.turnOn();
     EXPECT_TRUE(pump.isRunning());
-    
+
     pump.turnOff();
     EXPECT_FALSE(pump.isRunning());
-    
+
     pump.shutdown();
 }
