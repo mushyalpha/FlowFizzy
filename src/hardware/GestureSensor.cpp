@@ -399,12 +399,26 @@ uint8_t GestureSensor::readGesture() {
 // ── worker() — Polling loop ──────────────────────────────────────────────────
 void GestureSensor::worker() {
     bool isTriggered = false;
+    int diagTickCount = 0;  // TEMPORARY: remove after hardware validation
 
     while (running_) {
         try {
             // 1. Evaluate Proximity
             int prox = readRegister(APDS9960_PDATA);
+
+            // TEMPORARY DIAGNOSTIC: log raw PDATA every 10 ticks (~500ms)
+            // Remove this block once proximity detection is confirmed working.
+            if (++diagTickCount >= 10) {
+                diagTickCount = 0;
+                std::ostringstream diagMsg;
+                diagMsg << "[DIAG] APDS9960 PDATA=" << prox
+                        << " threshold=" << threshold_
+                        << (prox > threshold_ ? " TRIGGERED" : "");
+                Logger::info(diagMsg.str());
+            }
+
             bool currentlyTriggered = (prox > threshold_);
+
 
             if (currentlyTriggered && !isTriggered) {
                 isTriggered = true;
