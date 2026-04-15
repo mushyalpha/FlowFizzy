@@ -22,6 +22,11 @@ This document tracks technical issues and milestones for the AquaFlow project.
 
 ## Closed Issues
 
+### [#17] Unit Test Compilation Failure (libgpiod mock API divergence)
+- **Status:** Closed
+- **Description:** `make -j4` failed when compiling `filling_tests` because `src/hardware/FlowMeter.cpp` was built against a mock version of `gpiod.hpp` (`tests/mock_include/gpiod.hpp`) that did not fully match the real `libgpiod` v2 C++ bindings on the Raspberry Pi 5. Specifically, the mock lacked the `set_bias` method, missing `bias` enumerations, and the correct `add_line_settings()` overload for single integers. It also caused an ambiguous resolution for the edge event `type()` method.
+- **Resolved:** Fixed `mock_include/gpiod.hpp` to perfectly emulate the real `libgpiod` v2 API used by the system hardware. This allowed both the hardware integration targets and the unit test framework (`filling_tests`) to compile identically against the same `FlowMeter.cpp` logic.
+
 ### [#14] Replace std::cout with Logger in state machine
 - **Status:** Closed (Linked in commit 9e1f565)
 - **Resolved:** Removed non-deterministic I/O from `FillingController::tick()`.
