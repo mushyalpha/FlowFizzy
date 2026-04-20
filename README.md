@@ -1,15 +1,15 @@
-# AquaFlow Water Dispenser
+# FlowFizzy Water Dispenser
 
-![AquaFlow Logo](images/aquaflow_logo.png)
+![FlowFizzy Logo](images/fizzyflow_logo.png)
 
-AquaFlow is a smart, fully-automated touchless water dispenser built on the Raspberry Pi using C++. It utilizes intelligent hardware monitoring to safely dispense exact volumes of water using proximity detection.
+FlowFizzy is a smart, fully-automated touchless water dispenser built on the Raspberry Pi using C++. It utilizes intelligent hardware monitoring to safely dispense exact volumes of water using proximity detection.
 
 For SOLID compliance, `FillingController` now depends on behavioral interfaces (`IProximitySensor`, `IPump`, `IFlowMeter`) instead of concrete drivers. We considered a template-based variant for zero-overhead static polymorphism, but chose runtime interfaces for clearer architecture and easier assessment traceability; at a 100 ms control interval, virtual dispatch overhead is negligible.
 
-### 🎥 [Watch the End-to-End Demo on YouTube](#) <!-- TODO: Add YT Link -->
-### 📖 [Read our Project Tech Write-up on RS Design Spark](#) <!-- TODO: Add Blog Link -->
+### [Watch the End-to-End Demo on YouTube](#) <!-- TODO: Add YT Link -->
+### [Read our Project Tech Write-up on RS Design Spark](#) <!-- TODO: Add Blog Link -->
 
-## 🛠️ Hardware Connections (Raspberry Pi Pinout)
+## Hardware Connections (Raspberry Pi Pinout)
 
 Below is the definitive hardware wiring guide to connect the sensors and pump to the Raspberry Pi. For a visual representation, please refer to our physical circuit diagram:
 ![Hardware Wiring Diagram](physical_layout.png)
@@ -43,7 +43,7 @@ Driven via a Darlington TIP122 with a flyback diode.
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 The system follows a strict event-driven, non-blocking architecture using `timerfd` and `libgpiod` interrupts. For full class and sequence diagrams, see our detailed [Architecture Documentation](docs/architecture.md).
 
@@ -57,7 +57,7 @@ graph TD
     B -->|Callback| G[LCD Display]
 ```
 
-### ⏱️ Real-Time Timing Requirements
+### Real-Time Timing Requirements
 | Requirement | Value | Mechanism |
 | :--- | :--- | :--- |
 | Gesture Poll Interval | 50 ms | `timerfd` (blocking) |
@@ -67,15 +67,15 @@ graph TD
 
 ---
 
-## 👥 Division of Labor
+## Division of Labor
 | Team Member | Primary Responsibilities |
 | :--- | :--- |
 | **Abdullah Alkabbawi** | Real-Time Architecture, State Machine Logic, Hardware Integration, Multithreading. |
-| **Mushyalpha** | Hardware Specifications, Documentation (ADRs), CAD Design, Integration Testing. |
+| **Bonolo Masima** | Hardware Specifications, Documentation (ADRs), CAD Design, Integration Testing. |
 
 ---
 
-## 💰 Bill of Materials (BoM)
+## Bill of Materials (BoM)
 | Item | Cost |
 | :--- | :--- |
 | DollaTek APDS-9960 Gesture Sensor | £4.99 |
@@ -89,14 +89,14 @@ graph TD
 
 ---
 
-## 🚀 Build & Run Instructions
+## Build & Run Instructions
 
 ### 1. Fresh Raspberry Pi Installation
 If you are starting from a completely blank Raspberry Pi OS (Bookworm or newer), follow these steps:
 1. **Flash OS:** Flash Raspberry Pi OS (64-bit recommended) onto a MicroSD card using Raspberry Pi Imager. Ensure SSH and Wi-Fi are configured.
 2. **Boot & Connect:** Insert the SD card, boot the Pi, and SSH into it.
 3. **Enable I2C:** Run `sudo raspi-config` -> `Interfacing Options` -> `I2C` -> Enable.
-4. **Clone the Repo:** `git clone https://github.com/mushyalpha/AquaFlow.git && cd AquaFlow`
+4. **Clone the Repo:** `git clone https://github.com/mushyalpha/FlowFizzy.git && cd FlowFizzy`
 
 ### 2. Prerequisites
 Run the following exactly as listed to install C++ compilers, CMake, and the standard GPIO driver library:
@@ -131,5 +131,5 @@ sudo ./filling_machine
 
 ---
 
-## 📜 Licensing
+## Licensing
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
