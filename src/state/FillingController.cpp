@@ -103,17 +103,15 @@ void FillingController::tick() {
             // NOTE: flowMeter_ is NOT reset here — we continue from whatever
             // volume was already dispensed (cumulative fill across cup removals).
             // The meter is only reset when the user selects a new size.
-            pump_.turnOn();
+            pump_.turnOn();  // PumpController::turnOn() logs "Pump started!" itself
             double already = flowMeter_.getVolumeML();
-            double remaining = targetVolumeML_.load(std::memory_order_relaxed) - already;
-            std::ostringstream msg;
             if (already > 0.5) {
+                double remaining = targetVolumeML_.load(std::memory_order_relaxed) - already;
+                std::ostringstream msg;
                 msg << "Resuming fill: " << std::fixed << std::setprecision(1)
                     << already << " ml done, " << remaining << " ml remaining.";
-            } else {
-                msg << "Pump started!";
+                Logger::info(msg.str());
             }
-            Logger::info(msg.str());
             state_ = SystemState::FILLING;
         }
         break;

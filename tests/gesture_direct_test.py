@@ -170,7 +170,13 @@ def main():
                 time.sleep(0.01)
                 continue
 
-            raw = rd_block(bus, REG_GFIFO_U, fifo_level * 4)
+            # smbus2 limits block reads to 32 bytes.
+            # We must read in chunks if the FIFO has more than 8 datasets (8 * 4 = 32).
+            raw = []
+            bytes_to_read = fifo_level * 4
+            while len(raw) < bytes_to_read:
+                chunk = min(32, bytes_to_read - len(raw))
+                raw.extend(rd_block(bus, REG_GFIFO_U, chunk))
             datasets = [
                 (raw[i*4], raw[i*4+1], raw[i*4+2], raw[i*4+3])
                 for i in range(fifo_level)
