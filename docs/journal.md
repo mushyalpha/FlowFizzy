@@ -153,3 +153,38 @@ A chronological log of work done in the lab, daily goals, and simple tasks.
 **Limitations / Follow-up:**
 - I could not run `cmake` in the current shell because `cmake` was not installed or not available on `PATH`, so the build/test pass still needs to be verified in a configured development environment.
 - A sensible next improvement would be to harden `GestureSensor::init()` so failure paths are more transactional and leave the object in a cleaner state if setup fails partway through.
+
+---
+
+## 20 April 2026
+**Location:** Lab / Remote (SSH)
+
+### Interaction Model Redesign
+- Deprecated gesture-based cup size selection (unreliable in practice).
+- Switched to a **button-driven model**: short press (`b`) cycles Small → Medium → Large; long press / `s` confirms selection.
+- Proximity sensor (APDS-9960) is now used solely as a **cup presence trigger** — it fires the fill once the cup is held within ~10 cm for 1.5 seconds (confirmation hold).
+
+### Proximity Sensor Fix
+- Root cause of cup-not-detected bug: `GestureSensor::init()` was enabling the gesture engine (`GEN=1`, `GMODE=1`), which intercepts proximity events and prevents `PDATA` from updating.
+- Fix: stripped all gesture-engine registers from `init()`. Now configures `PON=1, PEN=1` only — identical to the working Python verification test.
+- Threshold calibrated to **90** (PDATA units) corresponding to ~10 cm detection distance with the McDonald's UK medium cup (ambient = 5–16, at 10 cm = 94–112, saturation at < 2 cm = 255).
+
+### Flow Meter Calibration — Important Reference
+> **Always use `sudo ./calibrate` in the build directory to recalibrate. Do not rely on Python/lgpio for pulse counting — lgpio callbacks do not work on the Pi 5 without the lgpiod daemon. The C++ driver uses libgpiod edge detection which works correctly.**
+
+| Date | Pulses | Actual Volume | ML_PER_PULSE |
+|------|--------|--------------|--------------|
+| 2026-04-02 | 2711 | 200 ml | 0.073774 |
+| 2026-04-20 (incorrect) | — | 250 ml (estimated) | 0.1651 ← **wrong** |
+| **2026-04-20 (final)** | **4027** | **260 ml (measured)** | **0.064564** ← use this |
+
+- The `0.1651` value was causing the pump to stop after dispensing only ~97 ml when targeting 250 ml.
+- The correct value `0.064564` was confirmed by the `./calibrate` C++ tool: 4027 pulses physically corresponded to 260 ml in a measuring jug.
+
+### Cumulative Fill
+- System now resumes a fill from the last dispensed volume if the cup is removed mid-fill and replaced.
+- Flow meter resets **only** when a new size is confirmed (long press), not on cup removal/replacement.
+
+### Hardware Notes
+- GPIO 18 (pump) floats HIGH before the app claims it — pump can auto-start when powerbank is connected. Fix: add 10 kΩ pull-down resistor between GPIO 18 and GND, or add `gpio=18=op,dl` to `/boot/firmware/config.txt`.
+- LCD I2C transport faults (`[ERROR] LcdDisplay transport fault`) were caused by writing to the LCD every 100 ms tick. Fixed by only updating LCD on state changes.
