@@ -34,11 +34,14 @@ constexpr int CUP_CONFIRM_MS = 1500;  // ms
 //   2026-04-02: 2711 pulses for 200 ml actual → 0.073774 ml/pulse
 //   2026-04-20: System reported 111.7 ml when ~250 ml was actually dispensed.
 //               Correction factor = 250 / 111.7 = 2.238
-//               New value = 0.073774 × 2.238 = 0.1651 ml/pulse
+//               New value = 0.073774 × 2.238 = 0.1651 ml/pulse  ← INCORRECT
+//   2026-04-20: Calibration tool (./calibrate) measured 4027 pulses for 260 ml actual.
+//               New value = 260 / 4027 = 0.064561 ml/pulse
+//               Previous 0.1651 was causing under-fill (~97 ml for a 250 ml target).
 //
-// To re-calibrate: let the system fill a measured volume, note the reported ml,
-// then set ML_PER_PULSE = current_value × (actual_ml / reported_ml).
-constexpr double ML_PER_PULSE = 0.1651;   // mL per flow-meter pulse (calibrated 2026-04-20)
+// To re-calibrate: run sudo ./calibrate in the build directory.
+// Let the pump fill a known volume, press Ctrl+C, enter the actual ml.
+constexpr double ML_PER_PULSE = 0.064561;  // mL per pulse — calibrated 2026-04-20
 
 // ─── Cup Size Volumes (McDonald's UK dispensing targets) ─────────────────────
 constexpr double CUP_SMALL_ML  = 250.0;   // Small  (~8.5 fl oz)
