@@ -112,3 +112,15 @@ add_executable(lcd_hello_world
 )
 target_include_directories(lcd_hello_world PRIVATE include src)
 target_link_libraries(lcd_hello_world pthread)
+
+# ── Flow-meter calibration tool ───────────────────────────────────────────────
+# sudo ./calibrate  — runs pump until Ctrl+C, then prompts for actual volume
+# and prints the correct ML_PER_PULSE value for PinConfig.h.
+add_executable(calibrate
+    tests/calibrate.cpp
+    src/hardware/PumpController.cpp
+    src/hardware/FlowMeter.cpp
+    src/utils/Logger.cpp
+)
+target_include_directories(calibrate PRIVATE include src)
+target_link_libraries(calibrate gpiodcxx pthread)
