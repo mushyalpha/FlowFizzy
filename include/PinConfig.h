@@ -29,9 +29,16 @@ constexpr int CUP_CONFIRM_MS = 1500;  // ms
 
 // ─── Flow Settings ───────────────────────────────────────────────────────────
 // YF-S401 spec: ~5880 pulses/litre  →  1000 mL / 5880 pulses ≈ 0.1701 mL/pulse
-// CALIBRATED 2026-04-02: 2711 pulses measured for 200 ml actual
-// → 200 / 2711 = 0.073774 ml/pulse (sensor runs ~2× datasheet spec)
-constexpr double ML_PER_PULSE = 0.073774;   // mL per flow-meter pulse (calibrated)
+//
+// CALIBRATION HISTORY:
+//   2026-04-02: 2711 pulses for 200 ml actual → 0.073774 ml/pulse
+//   2026-04-20: System reported 111.7 ml when ~250 ml was actually dispensed.
+//               Correction factor = 250 / 111.7 = 2.238
+//               New value = 0.073774 × 2.238 = 0.1651 ml/pulse
+//
+// To re-calibrate: let the system fill a measured volume, note the reported ml,
+// then set ML_PER_PULSE = current_value × (actual_ml / reported_ml).
+constexpr double ML_PER_PULSE = 0.1651;   // mL per flow-meter pulse (calibrated 2026-04-20)
 
 // ─── Cup Size Volumes (McDonald's UK dispensing targets) ─────────────────────
 constexpr double CUP_SMALL_ML  = 250.0;   // Small  (~8.5 fl oz)
