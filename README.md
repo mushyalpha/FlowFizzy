@@ -11,8 +11,10 @@ For SOLID compliance, `FillingController` now depends on behavioral interfaces (
 
 ## Hardware Connections (Raspberry Pi Pinout)
 
-Below is the definitive hardware wiring guide to connect the sensors and pump to the Raspberry Pi. For a visual representation, please refer to our physical circuit diagram:
+Below is the definitive hardware wiring guide to connect the sensors and pump to the Raspberry Pi. For a visual representation, please refer to our physical circuit diagrams:
 ![Hardware Wiring Diagram](physical_layout.png)
+![Gesture Sensor Wiring Diagram](images/physical_layout_gesture.png)
+![Drink Dispensing View](images/physical_layout_drink.png)
 
 > **Note:** Always ensure the Raspberry Pi is powered OFF when altering hardware connections. 
 
