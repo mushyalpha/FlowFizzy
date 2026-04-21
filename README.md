@@ -8,6 +8,7 @@ For SOLID compliance, `FillingController` now depends on behavioral interfaces (
 
 ### [Watch the End-to-End Demo on YouTube](#) <!-- TODO: Add YT Link -->
 ### [Read our Project Tech Write-up on RS Design Spark](#) <!-- TODO: Add Blog Link -->
+### [Follow us on Instagram](https://www.instagram.com/flow_fizzy/)
 
 ## Hardware Connections (Raspberry Pi Pinout)
 
