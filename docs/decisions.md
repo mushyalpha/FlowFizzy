@@ -1,4 +1,4 @@
-# Architecture & Technical Decisions (ADRs)
+go# Architecture & Technical Decisions (ADRs)
 
 A master log of technical bottlenecks and the resolutions implemented for the AquaFlow project.
 
